@@ -1,0 +1,18 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# WordPress specific
+node_modules/
+vendor/
+*.log
+
+# Backups
+*.bak
+*.tmp
