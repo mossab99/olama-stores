@@ -42,8 +42,8 @@ class OS_Helpers
         // Sidebar Menus & Core
         'Olama Stores' => 'المخزون',
         'Dashboard' => 'لوحة القيادة',
-        'Item Registry' => 'سجل العناصر',
-        'Add Items' => 'إضافة عناصر',
+        'Item Registry' => 'سجل المواد',
+        'Add Items' => 'إضافة مواد',
         'Stock' => 'المخزون',
         'Employee Custody' => 'عُهد الموظفين',
         'Student Withdrawals' => 'سحوبات الطلاب',
@@ -73,7 +73,7 @@ class OS_Helpers
         'Student Size Registration' => 'تسجيل مقاسات الطلاب',
         'Distribution Config' => 'إعدادات التوزيع',
         'Results & Charts' => 'النتائج والرسوم البيانية',
-        'Supplier Summary' => 'ملخص المورد',
+        'Supplier Summary' => 'طلبية المورد',
         'Saved Drafts' => 'المسودات المحفوظة',
         'Custom Order Estimation' => 'تقدير الطلبات المخصصة',
 
@@ -117,7 +117,7 @@ class OS_Helpers
         'Print' => 'طباعة',
         'Export CSV' => 'تصدير إلى CSV',
         'Export Excel' => 'تصدير إلى إكسل',
-        'Uniform Items Breakdown' => 'تفصيل عناصر الزي',
+        'Uniform Items Breakdown' => 'تفصيل مواد الزي',
         'Size Distribution (Pie)' => 'توزيع المقاسات (دائري)',
         'Grade vs. Sizes (Bar)' => 'الصفوف والمقاسات (أعمدة)',
 
@@ -130,7 +130,7 @@ class OS_Helpers
         'OK' => 'مكتمل',
         'GRAND TOTAL' => 'المجموع الكلي',
         'Size' => 'المقاس',
-        'Item' => 'العنصر',
+        'Item' => 'مادة',
         'Qty' => 'الكمية',
         'Polo' => 'بولو',
         'Hoody' => 'هودي',
