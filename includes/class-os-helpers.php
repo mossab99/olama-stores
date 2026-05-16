@@ -40,6 +40,8 @@ class OS_Helpers
 
         static $map = array(
         // Fabrics, Colors, Sizes
+        'Copy' => 'نسخة',
+        'Duplicate' => 'نسخ',
         'Fabrics' => 'الأقمشة',
         'Fabric Name' => 'اسم القماش',
         'Add Fabric' => 'إضافة قماش',

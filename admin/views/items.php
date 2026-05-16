@@ -310,6 +310,7 @@
                 + '<td>';
             if(olamaStores.caps.manage_items){
                 html += '<a href="#" class="os-edit-item button button-small" data-id="'+item.id+'"><?php esc_html_e("Edit","olama-stores");?></a> '
+                     +  '<a href="#" class="os-duplicate-item button button-small" data-id="'+item.id+'"><?php esc_html_e("Duplicate","olama-stores");?></a> '
                      +  '<a href="#" class="os-delete-item button button-small button-link-delete" data-id="'+item.id+'"><?php esc_html_e("Delete","olama-stores");?></a>';
             }
             html += '</td></tr>';
@@ -359,6 +360,35 @@
         });
     });
 
+    // Duplicate item
+    $(document).on('click', '.os-duplicate-item', function(e){
+        e.preventDefault();
+        var originalId = $(this).data('id');
+        $(this).text('...'); // Loading state
+        wp.apiFetch({ path: '/olama-stores/v1/items/' + originalId }).then(function(item){ 
+            var payload = {
+                sku: '',
+                name: item.name + ' - <?php esc_html_e("Copy","olama-stores");?>',
+                name_ar: item.name_ar ? item.name_ar + ' - <?php esc_html_e("Copy","olama-stores");?>' : '',
+                category_id: item.category_id,
+                unit_id: item.unit_id,
+                barcode: '',
+                unit_price: item.unit_price,
+                provider_id: item.provider_id,
+                min_stock_level: item.min_stock_level,
+                description: item.description,
+                specifications: item.specifications,
+                academic_year_id: olamaStores.activeYearId
+            };
+            wp.apiFetch({ path: '/olama-stores/v1/items', method: 'POST', data: payload }).then(function(){
+                loadItems($('#os-search-items').val(), $('#os-filter-category').val(), currentPage);
+            }).catch(function(err){
+                alert(err.message || 'Error duplicating item');
+                loadItems($('#os-search-items').val(), $('#os-filter-category').val(), currentPage);
+            });
+        });
+    });
+
     // Delete
     $(document).on('click', '.os-delete-item', function(e){
         e.preventDefault();
@@ -369,7 +399,7 @@
 
     function openModal(item){
         $('#os-item-id').val(item?item.id:'');
-        $('#os-item-modal-title').text(item?'<?php esc_html_e("Edit Item","olama-stores");?>':'<?php esc_html_e("Add Item","olama-stores");?>');
+        $('#os-item-modal-title').text(item && item.id ? '<?php esc_html_e("Edit Item","olama-stores");?>' : '<?php esc_html_e("Add Item","olama-stores");?>');
         $('#os-item-sku').val(item?item.sku:'');
         $('#os-item-name').val(item?item.name:'');
         $('#os-item-name-ar').val(item?item.name_ar:'');
@@ -391,7 +421,7 @@
 
     function openCustomModal(item){
         $('#os-custom-id').val(item ? item.id : '');
-        $('#os-custom-modal-title').text(item ? '<?php esc_html_e("Edit School Custom Item","olama-stores");?>' : '<?php esc_html_e("Add School Custom Item","olama-stores");?>');
+        $('#os-custom-modal-title').text(item && item.id ? '<?php esc_html_e("Edit School Custom Item","olama-stores");?>' : '<?php esc_html_e("Add School Custom Item","olama-stores");?>');
         $('#os-custom-sku').val(item ? item.sku : '');
         $('#os-custom-name').val(item ? item.name : '');
         $('#os-custom-price').val(item ? item.unit_price : 0);
