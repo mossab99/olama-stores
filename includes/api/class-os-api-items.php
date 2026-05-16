@@ -67,13 +67,16 @@ class OS_API_Items {
     public static function get_items( $request ) {
         $per_page = (int) $request->get_param( 'per_page' );
         $page     = (int) $request->get_param( 'page' );
-        
+        $is_custom = $request->get_param( 'is_custom' );
+
         $args = array(
             'category_id'     => (int) $request->get_param( 'category_id' ),
             'search'          => sanitize_text_field( $request->get_param( 'search' ) ),
             // Correction #1: academic_year_id as INT
             'academic_year_id'=> (int) $request->get_param( 'academic_year_id' ),
             'is_active'       => $request->get_param( 'is_active' ) !== null ? (bool) $request->get_param( 'is_active' ) : true,
+            // Filter: only items belonging to the custom warehouse (have model_id in specs)
+            'is_custom'       => ( $is_custom !== null && $is_custom !== '' && $is_custom !== '0' && $is_custom !== false ),
         );
 
         if ( $per_page > 0 ) {
@@ -207,11 +210,18 @@ class OS_API_Items {
     public static function create_provider( $request ) {
         global $wpdb;
         $data = $request->get_json_params();
+        $is_active = ! empty( $data['is_active'] ) ? 1 : 0;
+
+        if ( $is_active ) {
+            $wpdb->query( "UPDATE {$wpdb->prefix}os_providers SET is_active = 0" );
+        }
+
         $wpdb->insert( "{$wpdb->prefix}os_providers", array(
             'company_name'   => sanitize_text_field( $data['company_name'] ?? '' ),
             'mobile_contact' => sanitize_text_field( $data['mobile_contact'] ?? '' ),
             'location'       => sanitize_text_field( $data['location'] ?? '' ),
             'contact_person' => sanitize_text_field( $data['contact_person'] ?? '' ),
+            'is_active'      => $is_active,
         ) );
         return rest_ensure_response( array( 'id' => $wpdb->insert_id ), 201 );
     }
@@ -220,12 +230,23 @@ class OS_API_Items {
         global $wpdb;
         $id = (int) $request['id'];
         $data = $request->get_json_params();
-        $wpdb->update( "{$wpdb->prefix}os_providers", array(
+        
+        $update_data = array(
             'company_name'   => sanitize_text_field( $data['company_name'] ?? '' ),
             'mobile_contact' => sanitize_text_field( $data['mobile_contact'] ?? '' ),
             'location'       => sanitize_text_field( $data['location'] ?? '' ),
             'contact_person' => sanitize_text_field( $data['contact_person'] ?? '' ),
-        ), array( 'id' => $id ) );
+        );
+
+        if ( isset( $data['is_active'] ) ) {
+            $is_active = ! empty( $data['is_active'] ) ? 1 : 0;
+            if ( $is_active ) {
+                $wpdb->query( "UPDATE {$wpdb->prefix}os_providers SET is_active = 0" );
+            }
+            $update_data['is_active'] = $is_active;
+        }
+
+        $wpdb->update( "{$wpdb->prefix}os_providers", $update_data, array( 'id' => $id ) );
         return rest_ensure_response( array( 'success' => true ) );
     }
 

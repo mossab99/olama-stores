@@ -3,7 +3,7 @@
  * Plugin Name: Olama Stores
  * Plugin URI:  https://olama.online/olama-stores
  * Description: School warehouse management for Olama School System. Tracks inventory, stock movements, and employee/student item assignments.
- * Version:     1.0.0
+ * Version:     1.0.50
  * Author:      د. مصعب الحنيطي
  * Text Domain: olama-stores
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'OS_VERSION',           '1.0.1' );
+define( 'OS_VERSION',           '1.0.6' );
 define( 'OS_PATH',              plugin_dir_path( __FILE__ ) );
 define( 'OS_URL',               plugin_dir_url( __FILE__ ) );
 define( 'OS_FILE',              __FILE__ );
@@ -43,6 +43,7 @@ function os_check_deps() {
 function os_load_includes() {
     require_once OS_PATH . 'includes/class-os-activator.php';
     require_once OS_PATH . 'includes/class-os-roles.php';
+    require_once OS_PATH . 'includes/class-os-helpers.php';
     require_once OS_PATH . 'includes/integrations/class-os-school-integration.php';
     require_once OS_PATH . 'includes/services/class-os-audit-service.php';
     require_once OS_PATH . 'includes/services/class-os-stock-service.php';
@@ -56,6 +57,11 @@ function os_load_includes() {
     require_once OS_PATH . 'includes/api/class-os-api-stock.php';
     require_once OS_PATH . 'includes/api/class-os-api-assignments.php';
     require_once OS_PATH . 'includes/api/class-os-api-reports.php';
+    require_once OS_PATH . 'includes/ajax/class-os-estimation-ajax.php';
+    require_once OS_PATH . 'includes/models/class-os-uniform-size.php';
+    require_once OS_PATH . 'includes/ajax/class-os-uniform-size-ajax.php';
+    OS_Estimation_Ajax::register();
+    OS_Uniform_Size_Ajax::register();
     if ( is_admin() ) {
         require_once OS_PATH . 'admin/class-os-admin.php';
     }
@@ -149,3 +155,12 @@ function os_qty_available( $on_hand, $reserved ) {
 function os_count_variance( $counted, $system ) {
     return (int) $counted - (int) $system;
 }
+
+// ── Translation Filter ────────────────────────────────────────────────────────
+function os_translate_strings( $translated, $text, $domain ) {
+    if ( $domain === 'olama-stores' && class_exists( 'OS_Helpers' ) && OS_Helpers::is_arabic() ) {
+        return OS_Helpers::translate( $text );
+    }
+    return $translated;
+}
+add_filter( 'gettext', 'os_translate_strings', 10, 3 );

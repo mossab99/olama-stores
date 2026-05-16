@@ -29,6 +29,14 @@ class OS_Item {
                 $params[] = $like; $params[] = $like; $params[] = $like; $params[] = $like;
             }
         }
+        // Filter: is_custom = true → items that have stock in a warehouse of type 'custom'
+        if ( ! empty( $args['is_custom'] ) ) {
+            $where[] = "EXISTS (
+                SELECT 1 FROM {$wpdb->prefix}os_stock s
+                INNER JOIN {$wpdb->prefix}os_warehouses wh ON s.warehouse_id = wh.id
+                WHERE s.item_id = i.id AND wh.type = 'custom'
+            )";
+        }
 
         $where_sql = implode( ' AND ', $where );
         $sql = "SELECT i.*, c.name AS category_name, u.name AS unit_name, u.symbol AS unit_symbol, p.company_name AS provider_name
@@ -71,6 +79,14 @@ class OS_Item {
                 $where[] = '(i.name LIKE %s OR i.sku LIKE %s OR i.barcode LIKE %s OR i.specifications LIKE %s)';
                 $params[] = $like; $params[] = $like; $params[] = $like; $params[] = $like;
             }
+        }
+        // Filter: is_custom = true → items that have stock in a warehouse of type 'custom'
+        if ( ! empty( $args['is_custom'] ) ) {
+            $where[] = "EXISTS (
+                SELECT 1 FROM {$wpdb->prefix}os_stock s
+                INNER JOIN {$wpdb->prefix}os_warehouses wh ON s.warehouse_id = wh.id
+                WHERE s.item_id = i.id AND wh.type = 'custom'
+            )";
         }
 
         $where_sql = implode( ' AND ', $where );

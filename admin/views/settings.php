@@ -49,7 +49,8 @@
 
         <div id="os-warehouse-modal" class="os-modal" style="display:none;">
             <div class="os-modal-content">
-                <h2><?php esc_html_e( 'Add Warehouse', 'olama-stores' ); ?></h2>
+                <h2 id="os-wh-modal-title"><?php esc_html_e( 'Add Warehouse', 'olama-stores' ); ?></h2>
+                <input type="hidden" id="os-wh-id" value="">
                 <div class="os-form-row">
                     <label><?php esc_html_e( 'Name', 'olama-stores' ); ?></label>
                     <input type="text" id="os-wh-name">
@@ -61,6 +62,14 @@
                 <div class="os-form-row">
                     <label><?php esc_html_e( 'Location', 'olama-stores' ); ?></label>
                     <input type="text" id="os-wh-location">
+                </div>
+                <div class="os-form-row">
+                    <label><?php esc_html_e( 'Warehouse Type', 'olama-stores' ); ?></label>
+                    <select id="os-wh-type">
+                        <option value="items"><?php esc_html_e( 'General Items', 'olama-stores' ); ?></option>
+                        <option value="custom"><?php esc_html_e( 'School Custom', 'olama-stores' ); ?></option>
+                        <option value="books"><?php esc_html_e( 'Books', 'olama-stores' ); ?></option>
+                    </select>
                 </div>
                 <div class="os-form-actions">
                     <button type="button" class="button button-primary" id="os-wh-save"><?php esc_html_e( 'Save', 'olama-stores' ); ?></button>
@@ -128,6 +137,13 @@
                 <div class="os-form-row">
                     <label><?php esc_html_e( 'Contact Person', 'olama-stores' ); ?></label>
                     <input type="text" id="os-provider-person">
+                </div>
+                <div class="os-form-row">
+                    <label><?php esc_html_e( 'Active Status', 'olama-stores' ); ?></label>
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="os-provider-active" style="width: auto !important; height: auto !important; margin: 0 !important;"> 
+                        <span><?php esc_html_e( 'Active Provider (Used for cost calculations)', 'olama-stores' ); ?></span>
+                    </label>
                 </div>
                 <div class="os-form-actions">
                     <button type="button" class="button button-primary" id="os-provider-save"><?php esc_html_e( 'Save', 'olama-stores' ); ?></button>
@@ -205,8 +221,12 @@
     });
     function loadWarehouses(){
         wp.apiFetch({ path:'/olama-stores/v1/warehouses' }).then(function(rows){
-            var html='<table class="wp-list-table widefat"><thead><tr><th>ID</th><th><?php esc_html_e("Name","olama-stores");?></th><th><?php esc_html_e("Location","olama-stores");?></th><th><?php esc_html_e("Status","olama-stores");?></th></tr></thead><tbody>';
-            rows.forEach(function(w){ html+='<tr><td>'+w.id+'</td><td>'+w.name+'</td><td>'+(w.location||'—')+'</td><td>'+(w.is_active?'Active':'Inactive')+'</td></tr>'; });
+            var html='<table class="wp-list-table widefat"><thead><tr><th>ID</th><th><?php esc_html_e("Name","olama-stores");?></th><th><?php esc_html_e("Location","olama-stores");?></th><th><?php esc_html_e("Type","olama-stores");?></th><th><?php esc_html_e("Status","olama-stores");?></th><th><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
+            rows.forEach(function(w){ 
+                var typeLabel = w.type.charAt(0).toUpperCase() + w.type.slice(1);
+                html+='<tr><td>'+w.id+'</td><td>'+w.name+'</td><td>'+(w.location||'—')+'</td><td><span class="os-badge os-badge-'+w.type+'">'+typeLabel+'</span></td><td>'+(w.is_active?'Active':'Inactive')+'</td>'
+                    + '<td><button type="button" class="button button-small os-edit-wh" data-id="'+w.id+'"><span class="dashicons dashicons-edit"></span></button></td></tr>'; 
+            });
             $('#os-warehouses-list').html(html+'</tbody></table>');
         });
     }
@@ -342,22 +362,53 @@
         $(this).closest('.row').remove();
     });
 
-    $('#os-btn-add-warehouse').on('click', function(){ $('#os-warehouse-modal').show(); });
+    $('#os-btn-add-warehouse').on('click', function(){ 
+        $('#os-wh-id').val('');
+        $('#os-wh-modal-title').text('<?php esc_html_e("Add Warehouse","olama-stores");?>');
+        $('#os-wh-name').val(''); $('#os-wh-name-ar').val(''); $('#os-wh-location').val(''); $('#os-wh-type').val('items');
+        $('#os-warehouse-modal').show(); 
+    });
+
+    $(document).on('click', '.os-edit-wh', function(){
+        var id = $(this).data('id');
+        wp.apiFetch({ path:'/olama-stores/v1/warehouses' }).then(function(rows){
+            var w = rows.find(function(x){ return x.id == id; });
+            if(w){
+                $('#os-wh-id').val(w.id);
+                $('#os-wh-modal-title').text('<?php esc_html_e("Edit Warehouse","olama-stores");?>');
+                $('#os-wh-name').val(w.name);
+                $('#os-wh-name-ar').val(w.name_ar);
+                $('#os-wh-location').val(w.location);
+                $('#os-wh-type').val(w.type || 'items');
+                $('#os-warehouse-modal').show();
+            }
+        });
+    });
+
     $('#os-wh-save').on('click', function(){
-        wp.apiFetch({ path:'/olama-stores/v1/warehouses', method:'POST', data:{
+        var id = $('#os-wh-id').val();
+        var payload = {
             name: $('#os-wh-name').val(),
             name_ar: $('#os-wh-name-ar').val(),
-            location: $('#os-wh-location').val()
-        }}).then(function(){ $('#os-warehouse-modal').hide(); loadWarehouses(); })
-           .catch(function(e){ alert(e.message); });
+            location: $('#os-wh-location').val(),
+            type: $('#os-wh-type').val()
+        };
+        var method = id ? 'PUT' : 'POST';
+        var path = id ? '/olama-stores/v1/warehouses/' + id : '/olama-stores/v1/warehouses';
+
+        wp.apiFetch({ path: path, method: method, data: payload }).then(function(){ 
+            $('#os-warehouse-modal').hide(); 
+            loadWarehouses(); 
+        }).catch(function(e){ alert(e.message); });
     });
 
     // Providers Logic
     function loadProviders(){
         wp.apiFetch({ path:'/olama-stores/v1/providers' }).then(function(rows){
-            var html='<table class="wp-list-table widefat"><thead><tr><th><?php esc_html_e("Company","olama-stores");?></th><th><?php esc_html_e("Mobile","olama-stores");?></th><th><?php esc_html_e("Location","olama-stores");?></th><th><?php esc_html_e("Contact Person","olama-stores");?></th><th style="width:100px;"><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
+            var html='<table class="wp-list-table widefat"><thead><tr><th><?php esc_html_e("Company","olama-stores");?></th><th><?php esc_html_e("Mobile","olama-stores");?></th><th><?php esc_html_e("Location","olama-stores");?></th><th><?php esc_html_e("Contact Person","olama-stores");?></th><th><?php esc_html_e("Status","olama-stores");?></th><th style="width:100px;"><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
             rows.forEach(function(p){ 
                 html+='<tr><td>'+p.company_name+'</td><td>'+(p.mobile_contact||'—')+'</td><td>'+(p.location||'—')+'</td><td>'+(p.contact_person||'—')+'</td>'
+                    + '<td>'+(p.is_active == 1 ? '<strong>Active</strong>' : 'Inactive')+'</td>'
                     + '<td><button type="button" class="button button-small os-edit-provider" data-id="'+p.id+'"><span class="dashicons dashicons-edit"></span></button> '
                     + '<button type="button" class="button button-small button-link-delete os-delete-provider" data-id="'+p.id+'"><span class="dashicons dashicons-trash"></span></button></td></tr>'; 
             });
@@ -369,6 +420,7 @@
         $('#os-provider-id').val('');
         $('#os-provider-modal-title').text('<?php esc_html_e("Add Provider","olama-stores");?>');
         $('#os-provider-name').val(''); $('#os-provider-mobile').val(''); $('#os-provider-location').val(''); $('#os-provider-person').val('');
+        $('#os-provider-active').prop('checked', false);
         $('#os-provider-modal').show(); 
     });
 
@@ -383,6 +435,7 @@
                 $('#os-provider-mobile').val(p.mobile_contact);
                 $('#os-provider-location').val(p.location);
                 $('#os-provider-person').val(p.contact_person);
+                $('#os-provider-active').prop('checked', p.is_active == 1);
                 $('#os-provider-modal').show();
             }
         });
@@ -394,7 +447,8 @@
             company_name: $('#os-provider-name').val(),
             mobile_contact: $('#os-provider-mobile').val(),
             location: $('#os-provider-location').val(),
-            contact_person: $('#os-provider-person').val()
+            contact_person: $('#os-provider-person').val(),
+            is_active: $('#os-provider-active').is(':checked') ? 1 : 0
         };
         var method = id ? 'PUT' : 'POST';
         var path = id ? '/olama-stores/v1/providers/' + id : '/olama-stores/v1/providers';

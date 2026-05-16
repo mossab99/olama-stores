@@ -133,14 +133,32 @@ class OS_Stock_Service {
      * @return int|WP_Error  New assignment ID or error.
      */
     public static function issue_items( $data ) {
+        return self::issue_items_batch( $data );
+    }
+
+    /**
+     * Issue multiple items at once (atomic batch).
+     *
+     * @param array $data {
+     *     @type string $assignee_type
+     *     @type string $assignee_id
+     *     @type int    $warehouse_id
+     *     @type int    $academic_year_id
+     *     @type string $assigned_date
+     *     @type string $notes
+     *     @type string $expected_return_date
+     *     @type array  $items List of items to issue: array( array('item_id' => X, 'quantity' => Y), ... )
+     *     @type int    $item_id (Legacy support)
+     *     @type int    $quantity_assigned (Legacy support)
+     * }
+     * @return array|int|WP_Error Array of assignment IDs or single ID for legacy.
+     */
+    public static function issue_items_batch( $data ) {
         global $wpdb;
 
         $assignee_type   = sanitize_key( $data['assignee_type'] ?? '' );
-        // Correction #2: assignee_id is VARCHAR(50) — student_uid or WP user ID string
         $assignee_id     = sanitize_text_field( $data['assignee_id'] ?? '' );
-        $item_id         = (int) ( $data['item_id'] ?? 0 );
         $warehouse_id    = (int) ( $data['warehouse_id'] ?? 0 );
-        $quantity        = (int) ( $data['quantity_assigned'] ?? 0 );
         $academic_year_id = (int) ( $data['academic_year_id'] ?? os_get_active_year_id() );
         $assigned_date   = sanitize_text_field( $data['assigned_date'] ?? current_time( 'Y-m-d' ) );
         $notes           = sanitize_textarea_field( $data['notes'] ?? '' );
@@ -149,87 +167,115 @@ class OS_Stock_Service {
         if ( ! in_array( $assignee_type, array( 'employee', 'student' ), true ) || empty( $assignee_id ) ) {
             return new WP_Error( 'invalid_assignee', __( 'Invalid assignee type or ID.', 'olama-stores' ) );
         }
-        if ( $item_id <= 0 || $warehouse_id <= 0 || $quantity <= 0 ) {
-            return new WP_Error( 'invalid_data', __( 'Invalid item, warehouse, or quantity.', 'olama-stores' ) );
+
+        if ( $warehouse_id <= 0 ) {
+            return new WP_Error( 'invalid_warehouse', __( 'Invalid warehouse.', 'olama-stores' ) );
+        }
+
+        // Extract items
+        $items_to_issue = array();
+        if ( ! empty( $data['items'] ) && is_array( $data['items'] ) ) {
+            foreach ( $data['items'] as $it ) {
+                $item_id = (int) ( $it['item_id'] ?? 0 );
+                $qty     = (int) ( $it['quantity'] ?? 0 );
+                if ( $item_id > 0 && $qty > 0 ) {
+                    $items_to_issue[] = array( 'item_id' => $item_id, 'quantity' => $qty );
+                }
+            }
+        } elseif ( ! empty( $data['item_id'] ) ) {
+            // Legacy/Single support
+            $items_to_issue[] = array(
+                'item_id'  => (int) $data['item_id'],
+                'quantity' => (int) ( $data['quantity_assigned'] ?? 0 )
+            );
+        }
+
+        if ( empty( $items_to_issue ) ) {
+            return new WP_Error( 'invalid_data', __( 'No valid items or quantities provided.', 'olama-stores' ) );
         }
 
         $wpdb->query( 'START TRANSACTION' );
 
-        // Lock: check available stock
-        $stock = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}os_stock WHERE item_id = %d AND warehouse_id = %d FOR UPDATE",
-            $item_id, $warehouse_id
-        ) );
+        $assignment_ids = array();
+        foreach ( $items_to_issue as $it ) {
+            $item_id = $it['item_id'];
+            $quantity = $it['quantity'];
 
-        // Correction #4: calculate available in PHP, not GENERATED column
-        $available = $stock ? os_qty_available( $stock->quantity_on_hand, $stock->quantity_reserved ) : 0;
-
-        if ( $available < $quantity ) {
-            $wpdb->query( 'ROLLBACK' );
-            return new WP_Error( 'insufficient_stock', sprintf(
-                __( 'Insufficient stock. Available: %d, Requested: %d', 'olama-stores' ),
-                $available, $quantity
+            // Lock: check available stock
+            $stock = $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}os_stock WHERE item_id = %d AND warehouse_id = %d FOR UPDATE",
+                $item_id, $warehouse_id
             ) );
+
+            $available = $stock ? os_qty_available( $stock->quantity_on_hand, $stock->quantity_reserved ) : 0;
+
+            if ( $available < $quantity ) {
+                $wpdb->query( 'ROLLBACK' );
+                return new WP_Error( 'insufficient_stock', sprintf(
+                    __( 'Insufficient stock for item #%d. Available: %d, Requested: %d', 'olama-stores' ),
+                    $item_id, $available, $quantity
+                ) );
+            }
+
+            // Reserve stock
+            $wpdb->query( $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}os_stock SET quantity_reserved = quantity_reserved + %d, last_updated_at = %s WHERE item_id = %d AND warehouse_id = %d",
+                $quantity, current_time( 'mysql', 1 ), $item_id, $warehouse_id
+            ) );
+
+            // Create assignment
+            $wpdb->insert( "{$wpdb->prefix}os_assignments", array(
+                'assignee_type'       => $assignee_type,
+                'assignee_id'         => $assignee_id,
+                'item_id'             => $item_id,
+                'warehouse_id'        => $warehouse_id,
+                'quantity_assigned'   => $quantity,
+                'quantity_returned'   => 0,
+                'status'              => 'active',
+                'assigned_date'       => $assigned_date,
+                'expected_return_date'=> $expected_return,
+                'notes'               => $notes,
+                'academic_year_id'    => $academic_year_id ?: null,
+                'assigned_by'         => get_current_user_id(),
+                'created_at'          => current_time( 'mysql', 1 ),
+            ) );
+            $assignment_id = $wpdb->insert_id;
+
+            if ( ! $assignment_id ) {
+                $wpdb->query( 'ROLLBACK' );
+                return new WP_Error( 'db_error', __( 'Failed to create assignment.', 'olama-stores' ) );
+            }
+
+            $assignment_ids[] = $assignment_id;
+
+            // Stock movement
+            $movement_type = ( $assignee_type === 'employee' ) ? self::ISSUE_EMPLOYEE : self::ISSUE_STUDENT;
+            $wpdb->insert( "{$wpdb->prefix}os_stock_movements", array(
+                'item_id'          => $item_id,
+                'warehouse_id'     => $warehouse_id,
+                'movement_type'    => $movement_type,
+                'quantity'         => $quantity,
+                'reference_id'     => $assignment_id,
+                'reference_type'   => 'assignment',
+                'notes'            => $notes,
+                'academic_year_id' => $academic_year_id ?: null,
+                'performed_by'     => get_current_user_id(),
+                'performed_at'     => current_time( 'mysql', 1 ),
+            ) );
+
+            OS_Audit_Service::log( 'os_assignments', $assignment_id, 'create', null, array(
+                'assignee_type' => $assignee_type,
+                'assignee_id'   => $assignee_id,
+                'item_id'       => $item_id,
+                'quantity'      => $quantity,
+            ) );
+
+            do_action( 'os_after_issue_items', $assignment_id, $item_id, $warehouse_id, $quantity );
         }
-
-
-
-        // Reserve stock (increase reserved quantity)
-        $wpdb->query( $wpdb->prepare(
-            "UPDATE {$wpdb->prefix}os_stock SET quantity_reserved = quantity_reserved + %d, last_updated_at = %s WHERE item_id = %d AND warehouse_id = %d",
-            $quantity, current_time( 'mysql', 1 ), $item_id, $warehouse_id
-        ) );
-
-        // Create assignment
-        $wpdb->insert( "{$wpdb->prefix}os_assignments", array(
-            'assignee_type'       => $assignee_type,
-            'assignee_id'         => $assignee_id,
-            'item_id'             => $item_id,
-            'warehouse_id'        => $warehouse_id,
-            'quantity_assigned'   => $quantity,
-            'quantity_returned'   => 0,
-            'status'              => 'active',
-            'assigned_date'       => $assigned_date,
-            'expected_return_date'=> $expected_return,
-            'notes'               => $notes,
-            'academic_year_id'    => $academic_year_id ?: null,
-            'assigned_by'         => get_current_user_id(),
-            'created_at'          => current_time( 'mysql', 1 ),
-        ) );
-        $assignment_id = $wpdb->insert_id;
-
-        if ( ! $assignment_id ) {
-            $wpdb->query( 'ROLLBACK' );
-            return new WP_Error( 'db_error', __( 'Failed to create assignment.', 'olama-stores' ) );
-        }
-
-        // Stock movement
-        $movement_type = ( $assignee_type === 'employee' ) ? self::ISSUE_EMPLOYEE : self::ISSUE_STUDENT;
-        $wpdb->insert( "{$wpdb->prefix}os_stock_movements", array(
-            'item_id'          => $item_id,
-            'warehouse_id'     => $warehouse_id,
-            'movement_type'    => $movement_type,
-            'quantity'         => $quantity,
-            'reference_id'     => $assignment_id,
-            'reference_type'   => 'assignment',
-            'notes'            => $notes,
-            'academic_year_id' => $academic_year_id ?: null,
-            'performed_by'     => get_current_user_id(),
-            'performed_at'     => current_time( 'mysql', 1 ),
-        ) );
 
         $wpdb->query( 'COMMIT' );
 
-        OS_Audit_Service::log( 'os_assignments', $assignment_id, 'create', null, array(
-            'assignee_type' => $assignee_type,
-            'assignee_id'   => $assignee_id,
-            'item_id'       => $item_id,
-            'quantity'      => $quantity,
-        ) );
-
-        do_action( 'os_after_issue_items', $assignment_id, $item_id, $warehouse_id, $quantity );
-
-        return $assignment_id;
+        return ( count( $assignment_ids ) === 1 && empty( $data['items'] ) ) ? $assignment_ids[0] : $assignment_ids;
     }
 
     // ── Process return ────────────────────────────────────────────────────────
@@ -356,6 +402,104 @@ class OS_Stock_Service {
         do_action( 'os_after_process_return', $return_id, $assignment_id, $quantity, $return_condition );
 
         return $return_id;
+    }
+
+    // ── Reverse withdrawal ────────────────────────────────────────────────────
+
+    /**
+     * Fully reverse a student withdrawal assignment.
+     *
+     * - The original assignment is NOT deleted; its status is set to 'reversed'.
+     * - A new 'return_student' stock movement is recorded for the audit log.
+     * - quantity_on_hand is restored; quantity_reserved is released.
+     *
+     * @param  int    $assignment_id  The assignment to reverse.
+     * @param  string $notes          Optional reason for reversal.
+     * @return int|WP_Error  The new reversal movement ID, or error.
+     */
+    public static function reverse_assignment( $assignment_id, $notes = '' ) {
+        global $wpdb;
+
+        $assignment_id = (int) $assignment_id;
+        if ( $assignment_id <= 0 ) {
+            return new WP_Error( 'invalid_id', __( 'Invalid assignment ID.', 'olama-stores' ) );
+        }
+
+        $assignment = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}os_assignments WHERE id = %d", $assignment_id
+        ) );
+
+        if ( ! $assignment ) {
+            return new WP_Error( 'not_found', __( 'Assignment not found.', 'olama-stores' ) );
+        }
+
+        if ( $assignment->status === 'reversed' ) {
+            return new WP_Error( 'already_reversed', __( 'This withdrawal has already been reversed.', 'olama-stores' ) );
+        }
+
+        $qty          = (int) $assignment->quantity_assigned;
+        $item_id      = (int) $assignment->item_id;
+        $warehouse_id = (int) $assignment->warehouse_id;
+        $notes        = $notes ?: __( 'Withdrawal reversed by admin.', 'olama-stores' );
+
+        $wpdb->query( 'START TRANSACTION' );
+
+        // 1. Lock stock row
+        $stock = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}os_stock WHERE item_id = %d AND warehouse_id = %d FOR UPDATE",
+            $item_id, $warehouse_id
+        ) );
+
+        // 2. Restore stock: add back to on_hand, release reserved
+        if ( $stock ) {
+            $wpdb->query( $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}os_stock
+                 SET quantity_on_hand   = quantity_on_hand + %d,
+                     quantity_reserved  = GREATEST(0, quantity_reserved - %d),
+                     last_updated_at    = %s
+                 WHERE item_id = %d AND warehouse_id = %d",
+                $qty, $qty, current_time( 'mysql', 1 ), $item_id, $warehouse_id
+            ) );
+        }
+
+        // 3. Mark assignment as reversed (preserve original record)
+        $wpdb->update(
+            "{$wpdb->prefix}os_assignments",
+            array( 'status' => 'reversed', 'notes' => trim( $assignment->notes . "\n[Reversed] " . $notes ) ),
+            array( 'id' => $assignment_id )
+        );
+
+        // 4. Create a return_student movement for the audit trail
+        $wpdb->insert( "{$wpdb->prefix}os_stock_movements", array(
+            'item_id'          => $item_id,
+            'warehouse_id'     => $warehouse_id,
+            'movement_type'    => self::RETURN_STUDENT,
+            'quantity'         => $qty,
+            'reference_id'     => $assignment_id,
+            'reference_type'   => 'reversal',
+            'notes'            => $notes,
+            'academic_year_id' => $assignment->academic_year_id,
+            'performed_by'     => get_current_user_id(),
+            'performed_at'     => current_time( 'mysql', 1 ),
+        ) );
+        $movement_id = $wpdb->insert_id;
+
+        if ( ! $movement_id ) {
+            $wpdb->query( 'ROLLBACK' );
+            return new WP_Error( 'db_error', __( 'Failed to record reversal movement.', 'olama-stores' ) );
+        }
+
+        $wpdb->query( 'COMMIT' );
+
+        OS_Audit_Service::log( 'os_assignments', $assignment_id, 'reverse', $assignment, array(
+            'status'      => 'reversed',
+            'movement_id' => $movement_id,
+            'reversed_by' => get_current_user_id(),
+        ) );
+
+        do_action( 'os_after_reverse_assignment', $assignment_id, $movement_id, $item_id, $warehouse_id, $qty );
+
+        return $movement_id;
     }
 
     // ── Manual adjustment ─────────────────────────────────────────────────────
@@ -521,6 +665,10 @@ class OS_Stock_Service {
         if ( ! empty( $args['warehouse_id'] ) ) {
             $where[]  = 's.warehouse_id = %d';
             $params[] = (int) $args['warehouse_id'];
+        }
+        if ( ! empty( $args['item_id'] ) ) {
+            $where[]  = 's.item_id = %d';
+            $params[] = (int) $args['item_id'];
         }
         if ( ! empty( $args['category_id'] ) ) {
             $where[]  = 'i.category_id = %d';

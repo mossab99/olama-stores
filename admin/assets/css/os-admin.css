@@ -66,10 +66,13 @@
 .os-badge-adjustment_sub, .os-badge-damage_loss, .os-badge-lost { background: #fee2e2; color: #b91c1c; }
 .os-badge-partially_returned, .os-badge-transfer_out, .os-badge-transfer_in { background: #fde68a; color: #92400e; }
 .os-badge-fully_returned, .os-badge-inventory_count { background: #e0e7ff; color: #3730a3; }
+.os-badge-custom { background: #fee2e2; color: #b91c1c; }
+.os-badge-books { background: #dcfce7; color: #15803d; }
+.os-badge-items { background: #e0f2fe; color: #0369a1; }
 
 /* Modal */
 .os-modal { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:99999; display:flex; align-items:center; justify-content:center; }
-.os-modal-content { background: var(--os-surface); border-radius: var(--os-radius); padding: 32px; max-width: 600px; width: 94%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
+.os-modal-content { background: var(--os-surface); border-radius: var(--os-radius); padding: 32px; max-width: 96%; width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
 .os-modal-content h2 { margin-top: 0; font-size: 1.2rem; color: var(--os-primary); border-bottom: 1px solid var(--os-border); padding-bottom: 12px; margin-bottom: 20px; }
 
 /* Forms */
@@ -77,7 +80,7 @@
 .os-form-row label:first-child { font-weight: 600; font-size: .85rem; color: var(--os-text-muted); }
 .os-input-group { display: flex; gap: 0; border: 1px solid var(--os-border); border-radius: var(--os-radius); overflow: hidden; background: #fff; }
 .os-input-group input { border: none !important; border-radius: 0 !important; flex: 1; padding: 7px 12px !important; outline: none !important; box-shadow: none !important; }
-.os-input-group select { border: none !important; border-left: 1px solid var(--os-border) !important; border-radius: 0 !important; width: 40px !important; max-width: 40px; flex: 0 0 40px !important; padding: 0 5px !important; background-position: right 5px center !important; }
+.os-input-group select { border: none !important; border-left: 1px solid var(--os-border) !important; border-radius: 0 !important; width: 36px !important; max-width: 36px; flex: 0 0 36px !important; padding: 0 4px !important; background-position: right 3px center !important; background-size: 10px !important; }
 .os-input-group .button { padding: 0 12px !important; height: 32px !important; line-height: 30px !important; font-weight: 600; border-radius: 0 !important; }
 .os-form-row input, .os-form-row select, .os-form-row textarea { border-radius: var(--os-radius) !important; border: 1px solid var(--os-border) !important; padding: 7px 12px !important; width: 100%; box-sizing: border-box; }
 .os-form-row textarea { min-height: 80px; resize: vertical; }
@@ -100,3 +103,75 @@
 /* Utilities */
 .os-flex { display: flex; align-items: center; }
 .os-flex-gap { gap: 10px; }
+
+/* Withdrawal Modal Multi-item redesign */
+.os-withdrawal-items {
+    border: 1px solid var(--os-border);
+    border-radius: var(--os-radius);
+    padding: 12px;
+    background: #fdfdfd;
+    width: 100%;
+    box-sizing: border-box;
+}
+.os-item-row {
+    margin-bottom: 12px;
+    width: 100%;
+}
+.os-item-row:last-child { margin-bottom: 0; }
+.os-item-row .os-input-group { width: 100%; flex: 1; }
+.os-item-row .os-input-group input { min-width: 0; flex: 1; }
+
+.os-items-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 6px;
+    padding: 0 12px;
+    width: 100%;
+}
+.os-items-header div:first-child { width: 80px; flex: 0 0 80px; font-weight: 600; font-size: 0.8rem; color: var(--os-text-muted); }
+.os-items-header div:last-child { flex: 1; font-weight: 600; font-size: 0.8rem; color: var(--os-text-muted); padding-left: 12px; }
+
+/* Stock availability badge in item rows */
+.os-row-stock-avail {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    color: #15803d;
+    margin-left: 92px;
+    margin-top: 2px;
+}
+.os-row-stock-avail.os-stock-none {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+/* Transaction type pills in Withdrawals History */
+.os-tx-pill {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.os-tx-issue  { background: #dbeafe; color: #1d4ed8; }
+.os-tx-return { background: #fef9c3; color: #854d0e; }
+
+/* Reversed status badge */
+.os-badge-reversed { background: #f3f4f6; color: #6b7280; }
+
+/* Reverse button */
+.os-btn-reverse {
+    color: #b45309 !important;
+    border-color: #d97706 !important;
+}
+.os-btn-reverse:hover {
+    background: #fffbeb !important;
+    color: #92400e !important;
+}
+
+

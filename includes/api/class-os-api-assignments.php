@@ -23,6 +23,12 @@ class OS_API_Assignments {
             'methods' => 'POST', 'callback' => array( __CLASS__, 'process_return' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_process_assignments' ); },
         ) );
+        // Reverse a specific withdrawal (marks as reversed, restores stock, logs movement)
+        register_rest_route( self::NS, '/assignments/(?P<id>\d+)/reverse', array(
+            'methods'             => 'POST',
+            'callback'            => array( __CLASS__, 'reverse_assignment' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_process_assignments' ); },
+        ) );
         // Get all assignments for an assignee (employee or student)
         register_rest_route( self::NS, '/assignees/(?P<type>employee|student)/(?P<assignee_id>[^/]+)', array(
             'methods' => 'GET', 'callback' => array( __CLASS__, 'get_for_assignee' ),
@@ -71,6 +77,15 @@ class OS_API_Assignments {
         $result = OS_Stock_Service::process_return( $request->get_json_params() );
         if ( is_wp_error( $result ) ) { return $result; }
         return rest_ensure_response( array( 'return_id' => $result ), 201 );
+    }
+
+    public static function reverse_assignment( $request ) {
+        $id    = (int) $request['id'];
+        $data  = $request->get_json_params() ?: array();
+        $notes = sanitize_textarea_field( $data['notes'] ?? '' );
+        $result = OS_Stock_Service::reverse_assignment( $id, $notes );
+        if ( is_wp_error( $result ) ) { return $result; }
+        return rest_ensure_response( array( 'movement_id' => $result ), 201 );
     }
 
     public static function get_for_assignee( $request ) {

@@ -21,6 +21,7 @@ class OS_Warehouse {
             'name'       => sanitize_text_field( $data['name'] ),
             'name_ar'    => sanitize_text_field( $data['name_ar'] ?? '' ),
             'location'   => sanitize_text_field( $data['location'] ?? '' ),
+            'type'       => sanitize_key( $data['type'] ?? 'items' ),
             'manager_id' => ! empty( $data['manager_id'] ) ? (int) $data['manager_id'] : null,
             'is_active'  => 1,
             'created_at' => current_time( 'mysql', 1 ),
@@ -37,6 +38,7 @@ class OS_Warehouse {
             'name'       => sanitize_text_field( $data['name'] ),
             'name_ar'    => sanitize_text_field( $data['name_ar'] ?? '' ),
             'location'   => sanitize_text_field( $data['location'] ?? '' ),
+            'type'       => sanitize_key( $data['type'] ?? 'items' ),
             'manager_id' => ! empty( $data['manager_id'] ) ? (int) $data['manager_id'] : null,
             'is_active'  => (int) ( $data['is_active'] ?? 1 ),
         ), array( 'id' => $id ) );

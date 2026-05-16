@@ -116,13 +116,29 @@ if ( typeof window.wp.apiFetch !== 'function' ) {
     }
 
     /* ── 3. Centralized Item Search Utility ─────────────────────────────────── */
-    window.osSearchItems = function(query, $targetSelect, callback) {
-        var params = '?per_page=50&academic_year_id=' + (window.olamaStores.activeYearId || '');
-        if (query) params += '&search=' + encodeURIComponent(query);
+    /**
+     * Search items via REST API and populate a select element.
+     *
+     * @param {string}   query         – Search string (empty = all / initial load)
+     * @param {jQuery}   $targetSelect – The <select> to populate
+     * @param {Function} [callback]    – Optional callback(items)
+     * @param {Object}   [opts]        – Extra options: { per_page, is_custom }
+     */
+    window.osSearchItems = function(query, $targetSelect, callback, opts) {
+        opts = opts || {};
+        var perPage  = opts.per_page  || 50;
+        var isCustom = opts.is_custom || 0;
+
+        var params = '?per_page=' + perPage + '&academic_year_id=' + (window.olamaStores.activeYearId || '');
+        if (query)    params += '&search='    + encodeURIComponent(query);
+        if (isCustom) params += '&is_custom=1';
+
         return wp.apiFetch({ path: '/olama-stores/v1/items' + params }).then(function(items) {
             var opts = '<option value=""></option>';
             items.forEach(function(i) {
-                opts += '<option value="' + i.id + '">' + i.name + ' (' + i.sku + ')' + '</option>';
+                var isCustomFlag = (i.specifications && i.specifications.model_id) ? 1 : 0;
+                var isBooks      = (i.specifications && i.specifications.type === 'grade_books') ? 1 : 0;
+                opts += '<option value="' + i.id + '" data-custom="' + isCustomFlag + '" data-books="' + isBooks + '">' + i.name + ' (' + i.sku + ')' + '</option>';
             });
             $targetSelect.html(opts);
             $targetSelect.trigger('os:search-results', [items]);
@@ -134,9 +150,11 @@ if ( typeof window.wp.apiFetch !== 'function' ) {
     var modalSearchTimer;
     $(document).on('input', '.os-modal-item-search', function(){
         var $input = $(this), q = $input.val(), target = $input.data('target');
+        // Check if this search input is inside the withdrawal modal → restrict to custom items
+        var inWdModal = $input.closest('#os-withdraw-modal').length > 0;
         clearTimeout(modalSearchTimer);
         modalSearchTimer = setTimeout(function(){ 
-            window.osSearchItems(q, $(target)); 
+            window.osSearchItems(q, $(target), null, inWdModal ? { per_page: 50, is_custom: 1 } : {}); 
         }, 400);
     });
 

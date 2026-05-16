@@ -73,6 +73,7 @@ class OS_Admin
         add_submenu_page('olama-stores', __('Employee Custody', 'olama-stores'), __('Employee Custody', 'olama-stores'), 'os_view_assignments', 'olama-stores-assignments', array($this, 'page_assignments'));
         add_submenu_page('olama-stores', __('Student Withdrawals', 'olama-stores'), __('Student Withdrawals', 'olama-stores'), 'os_view_assignments', 'olama-stores-withdrawals', array($this, 'page_withdrawals'));
         add_submenu_page('olama-stores', __('Reports', 'olama-stores'), __('Reports', 'olama-stores'), 'os_view_reports', 'olama-stores-reports', array($this, 'page_reports'));
+        add_submenu_page('olama-stores', __('Order Estimation', 'olama-stores'), __('Order Estimation', 'olama-stores'), 'manage_options', 'olama-stores-order-estimation', array($this, 'page_order_estimation'));
 
         if (OS_Roles::can('os_manage_settings')) {
             add_submenu_page('olama-stores', __('Settings', 'olama-stores'), __('Settings', 'olama-stores'), 'os_manage_settings', 'olama-stores-settings', array($this, 'page_settings'));
@@ -99,6 +100,17 @@ class OS_Admin
             OS_VERSION,
             false
         );
+
+        // Student size registration JS — only on estimation page
+        if ( isset( $_GET['page'] ) && $_GET['page'] === 'olama-stores-order-estimation' ) {
+            wp_enqueue_script(
+                'os-student-size-reg',
+                OS_URL . 'admin/assets/js/os-student-size-registration.js',
+                array( 'jquery' ),
+                OS_VERSION,
+                true
+            );
+        }
     }
 
     // ── Page renderers ────────────────────────────────────────────────────────
@@ -129,6 +141,10 @@ class OS_Admin
     public function page_reports()
     {
         $this->render_view('reports');
+    }
+    public function page_order_estimation()
+    {
+        $this->render_view('order-estimation');
     }
     public function page_settings()
     {

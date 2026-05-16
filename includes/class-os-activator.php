@@ -27,6 +27,25 @@ class OS_Activator {
             $wpdb->query( "ALTER TABLE {$p}os_items ADD COLUMN provider_id INT UNSIGNED DEFAULT NULL AFTER unit_price" );
         }
 
+        if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$p}os_warehouses LIKE 'type'" ) ) {
+            $wpdb->query( "ALTER TABLE {$p}os_warehouses ADD COLUMN type VARCHAR(20) DEFAULT 'items' AFTER location" );
+        }
+
+        if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$p}os_providers LIKE 'is_active'" ) ) {
+            $wpdb->query( "ALTER TABLE {$p}os_providers ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 0 AFTER contact_person" );
+        }
+
+        // Migration: add grade_id / section_id / academic_year_id to uniform sizes table if missing
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '{$p}os_student_uniform_sizes'" ) ) {
+            if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$p}os_student_uniform_sizes LIKE 'grade_id'" ) ) {
+                $wpdb->query( "ALTER TABLE {$p}os_student_uniform_sizes
+                    ADD COLUMN grade_id INT UNSIGNED DEFAULT NULL AFTER academic_year,
+                    ADD COLUMN section_id INT UNSIGNED DEFAULT NULL AFTER grade,
+                    ADD COLUMN academic_year_id INT UNSIGNED DEFAULT NULL AFTER student_uid,
+                    MODIFY COLUMN grade VARCHAR(100) NOT NULL" );
+            }
+        }
+
         $tables = array();
 
         // ── os_categories ────────────────────────────────────────────────────
@@ -65,6 +84,7 @@ class OS_Activator {
             mobile_contact VARCHAR(50)  DEFAULT NULL,
             location       VARCHAR(255) DEFAULT NULL,
             contact_person VARCHAR(150) DEFAULT NULL,
+            is_active      TINYINT(1)   NOT NULL DEFAULT 0,
             created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id)
         ) $col;";
@@ -107,6 +127,7 @@ class OS_Activator {
             name       VARCHAR(150)    NOT NULL,
             name_ar    VARCHAR(150)    DEFAULT NULL,
             location   VARCHAR(250)    DEFAULT NULL,
+            type       VARCHAR(20)     NOT NULL DEFAULT 'items',
             manager_id BIGINT UNSIGNED DEFAULT NULL,
             is_active  TINYINT(1)      NOT NULL DEFAULT 1,
             created_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -250,6 +271,33 @@ class OS_Activator {
             KEY to_warehouse (to_warehouse)
         ) $col;";
 
+        // ── os_student_uniform_sizes ──────────────────────────────────────────────
+        // Future-ready: separate polo/hoodie/pants columns + audit who/when.
+        // grade_id / section_id are FKs to olama_grades / olama_sections for proper integration.
+        $tables[] = "CREATE TABLE {$p}os_student_uniform_sizes (
+            id              INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+            student_uid     VARCHAR(50)     NOT NULL,
+            academic_year_id INT UNSIGNED  DEFAULT NULL,
+            academic_year   VARCHAR(20)     NOT NULL,
+            grade_id        INT UNSIGNED    DEFAULT NULL,
+            grade           VARCHAR(100)    NOT NULL,
+            section_id      INT UNSIGNED    DEFAULT NULL,
+            section         VARCHAR(20)     DEFAULT NULL,
+            uniform_size    TINYINT UNSIGNED NOT NULL,
+            polo_size       TINYINT UNSIGNED DEFAULT NULL,
+            hoodie_size     TINYINT UNSIGNED DEFAULT NULL,
+            pants_size      TINYINT UNSIGNED DEFAULT NULL,
+            notes           TEXT            DEFAULT NULL,
+            measured_by     BIGINT UNSIGNED DEFAULT NULL,
+            measured_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY unique_student_year (student_uid, academic_year),
+            KEY idx_grade_section (grade_id, section_id),
+            KEY idx_academic_year (academic_year_id),
+            KEY idx_uniform_size (uniform_size)
+        ) $col;";
+
+
         // ── os_audit_log ──────────────────────────────────────────────────────
         // Correction #5: old_values/new_values LONGTEXT (not JSON)
         // action VARCHAR (not ENUM)
@@ -300,6 +348,7 @@ class OS_Activator {
             "{$p}os_assignment_returns",
             "{$p}os_transfers",
             "{$p}os_audit_log",
+            "{$p}os_student_uniform_sizes",
         );
     }
 }

@@ -30,11 +30,15 @@ class OS_API_Stock {
             array( 'methods' => 'GET',  'callback' => array( __CLASS__, 'get_warehouses' ), 'permission_callback' => function() { return OS_Roles::can( 'os_view_stock' ); } ),
             array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'create_warehouse'), 'permission_callback' => function() { return OS_Roles::can( 'os_manage_warehouses' ); } ),
         ) );
+        register_rest_route( self::NS, '/warehouses/(?P<id>\d+)', array(
+            array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_warehouse' ), 'permission_callback' => function() { return OS_Roles::can( 'os_manage_warehouses' ); } ),
+        ) );
     }
 
     public static function get_stock( $request ) {
         $args = array_filter( array(
             'warehouse_id'    => (int) $request->get_param( 'warehouse_id' ),
+            'item_id'         => (int) $request->get_param( 'item_id' ),
             'category_id'     => (int) $request->get_param( 'category_id' ),
             'low_stock_only'  => (bool) $request->get_param( 'low_stock_only' ),
         ) );
@@ -86,5 +90,10 @@ class OS_API_Stock {
     public static function create_warehouse( $request ) {
         $id = OS_Warehouse::create( $request->get_json_params() );
         return rest_ensure_response( array( 'id' => $id ), 201 );
+    }
+
+    public static function update_warehouse( $request ) {
+        $id = OS_Warehouse::update( (int) $request['id'], $request->get_json_params() );
+        return rest_ensure_response( array( 'id' => $id ) );
     }
 }
