@@ -12,6 +12,8 @@
         <a href="#tab-providers" class="nav-tab" data-tab="providers"><?php esc_html_e( 'Providers', 'olama-stores' ); ?></a>
         <a href="#tab-custom-models" class="nav-tab" data-tab="custom-models"><?php esc_html_e( 'Custom Models', 'olama-stores' ); ?></a>
         <a href="#tab-fabrics" class="nav-tab" data-tab="fabrics"><?php esc_html_e( 'Fabrics', 'olama-stores' ); ?></a>
+        <a href="#tab-colors" class="nav-tab" data-tab="colors"><?php esc_html_e( 'Colors', 'olama-stores' ); ?></a>
+        <a href="#tab-sizes" class="nav-tab" data-tab="sizes"><?php esc_html_e( 'Sizes', 'olama-stores' ); ?></a>
         <a href="#tab-integration" class="nav-tab" data-tab="integration"><?php esc_html_e( 'School Integration', 'olama-stores' ); ?></a>
     </div>
 
@@ -218,6 +220,36 @@
             </div>
         </div>
     </div>
+
+    <!-- Colors Tab -->
+    <div id="tab-colors" class="os-tab-content" style="display:none;">
+        <h2><?php esc_html_e( 'Colors', 'olama-stores' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Manage colors that can be assigned to school items.', 'olama-stores' ); ?></p>
+        <div id="os-colors-manager">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="os-new-color-name" placeholder="<?php esc_attr_e('Color Name', 'olama-stores');?>" style="flex: 1;">
+                <button type="button" class="button button-primary" id="os-btn-add-color"><?php esc_html_e('Add Color', 'olama-stores');?></button>
+            </div>
+            <div id="os-colors-list">
+                <span class="os-loading"><?php esc_html_e( 'Loading…', 'olama-stores' ); ?></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sizes Tab -->
+    <div id="tab-sizes" class="os-tab-content" style="display:none;">
+        <h2><?php esc_html_e( 'Sizes', 'olama-stores' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Manage sizes that can be assigned to school items.', 'olama-stores' ); ?></p>
+        <div id="os-sizes-manager">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="os-new-size-name" placeholder="<?php esc_attr_e('Size Name/Number', 'olama-stores');?>" style="flex: 1;">
+                <button type="button" class="button button-primary" id="os-btn-add-size"><?php esc_html_e('Add Size', 'olama-stores');?></button>
+            </div>
+            <div id="os-sizes-list">
+                <span class="os-loading"><?php esc_html_e( 'Loading…', 'olama-stores' ); ?></span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -235,6 +267,8 @@
         if($(this).data('tab')==='providers') loadProviders();
         if($(this).data('tab')==='custom-models') loadCustomModels();
         if($(this).data('tab')==='fabrics') loadFabrics();
+        if($(this).data('tab')==='colors') loadColors();
+        if($(this).data('tab')==='sizes') loadSizes();
     });
     function loadWarehouses(){
         wp.apiFetch({ path:'/olama-stores/v1/warehouses' }).then(function(rows){
@@ -313,6 +347,38 @@
         });
     }
 
+    function loadColors(){
+        wp.apiFetch({ path:'/olama-stores/v1/colors' }).then(function(rows){
+            var html='<table class="wp-list-table widefat"><thead><tr><th>ID</th><th><?php esc_html_e("Name","olama-stores");?></th><th style="width: 100px;"><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
+            rows.forEach(function(c){ 
+                html+='<tr data-id="'+c.id+'"><td>'+c.id+'</td>'
+                    + '<td><span class="view-mode">'+c.name+'</span><input type="text" class="edit-mode-name os-input" value="'+c.name+'" style="display:none; width: 100%;"></td>'
+                    + '<td>'
+                    + '<button type="button" class="button button-small os-edit-row"><span class="dashicons dashicons-edit"></span></button> '
+                    + '<button type="button" class="button button-small os-save-row" style="display:none;"><span class="dashicons dashicons-yes"></span></button> '
+                    + '<button type="button" class="button button-small button-link-delete os-delete-row"><span class="dashicons dashicons-trash"></span></button>'
+                    + '</td></tr>'; 
+            });
+            $('#os-colors-list').html(html+'</tbody></table>');
+        });
+    }
+
+    function loadSizes(){
+        wp.apiFetch({ path:'/olama-stores/v1/sizes' }).then(function(rows){
+            var html='<table class="wp-list-table widefat"><thead><tr><th>ID</th><th><?php esc_html_e("Name","olama-stores");?></th><th style="width: 100px;"><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
+            rows.forEach(function(s){ 
+                html+='<tr data-id="'+s.id+'"><td>'+s.id+'</td>'
+                    + '<td><span class="view-mode">'+s.name+'</span><input type="text" class="edit-mode-name os-input" value="'+s.name+'" style="display:none; width: 100%;"></td>'
+                    + '<td>'
+                    + '<button type="button" class="button button-small os-edit-row"><span class="dashicons dashicons-edit"></span></button> '
+                    + '<button type="button" class="button button-small os-save-row" style="display:none;"><span class="dashicons dashicons-yes"></span></button> '
+                    + '<button type="button" class="button button-small button-link-delete os-delete-row"><span class="dashicons dashicons-trash"></span></button>'
+                    + '</td></tr>'; 
+            });
+            $('#os-sizes-list').html(html+'</tbody></table>');
+        });
+    }
+
     $('#os-btn-add-cat').on('click', function(){
         var name = $('#os-new-cat-name').val();
         if(!name) return;
@@ -350,6 +416,24 @@
         });
     });
 
+    $('#os-btn-add-color').on('click', function(){
+        var name = $('#os-new-color-name').val();
+        if(!name) return;
+        wp.apiFetch({ path:'/olama-stores/v1/colors', method:'POST', data:{ name: name } }).then(function(){
+            $('#os-new-color-name').val('');
+            loadColors();
+        });
+    });
+
+    $('#os-btn-add-size').on('click', function(){
+        var name = $('#os-new-size-name').val();
+        if(!name) return;
+        wp.apiFetch({ path:'/olama-stores/v1/sizes', method:'POST', data:{ name: name } }).then(function(){
+            $('#os-new-size-name').val('');
+            loadSizes();
+        });
+    });
+
     $(document).on('click', '.os-edit-row', function(){
         var row = $(this).closest('tr');
         row.find('.view-mode').hide();
@@ -379,6 +463,16 @@
             wp.apiFetch({ path: '/olama-stores/v1/fabrics/' + id, method: 'PUT', data: payload }).then(function(){
                 loadFabrics();
             });
+        } else if (tab === 'tab-colors') {
+            payload.name = row.find('.edit-mode-name').val();
+            wp.apiFetch({ path: '/olama-stores/v1/colors/' + id, method: 'PUT', data: payload }).then(function(){
+                loadColors();
+            });
+        } else if (tab === 'tab-sizes') {
+            payload.name = row.find('.edit-mode-name').val();
+            wp.apiFetch({ path: '/olama-stores/v1/sizes/' + id, method: 'PUT', data: payload }).then(function(){
+                loadSizes();
+            });
         } else {
             payload.name = row.find('.edit-mode-name').val();
             payload.symbol = row.find('.edit-mode-symbol').val();
@@ -397,12 +491,16 @@
         if (tab === 'tab-categories') path = '/olama-stores/v1/categories/';
         else if (tab === 'tab-custom-models') path = '/olama-stores/v1/custom-models/';
         else if (tab === 'tab-fabrics') path = '/olama-stores/v1/fabrics/';
+        else if (tab === 'tab-colors') path = '/olama-stores/v1/colors/';
+        else if (tab === 'tab-sizes') path = '/olama-stores/v1/sizes/';
         else path = '/olama-stores/v1/units/';
 
         wp.apiFetch({ path: path + id, method: 'DELETE' }).then(function(){
             if (tab === 'tab-categories') loadCategories(); 
             else if (tab === 'tab-custom-models') loadCustomModels();
             else if (tab === 'tab-fabrics') loadFabrics();
+            else if (tab === 'tab-colors') loadColors();
+            else if (tab === 'tab-sizes') loadSizes();
             else loadUnits();
         });
     });

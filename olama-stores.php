@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'OS_VERSION',           '1.0.8' );
+define( 'OS_VERSION',           '1.0.9' );
 define( 'OS_PATH',              plugin_dir_path( __FILE__ ) );
 define( 'OS_URL',               plugin_dir_url( __FILE__ ) );
 define( 'OS_FILE',              __FILE__ );

@@ -39,12 +39,24 @@ class OS_Helpers
         }
 
         static $map = array(
-        // Fabrics
+        // Fabrics, Colors, Sizes
         'Fabrics' => 'الأقمشة',
         'Fabric Name' => 'اسم القماش',
         'Add Fabric' => 'إضافة قماش',
         'Select Fabric' => 'اختر القماش',
         'Fabric' => 'القماش',
+        'Colors' => 'الألوان',
+        'Color Name' => 'اسم اللون',
+        'Add Color' => 'إضافة لون',
+        'Select Color' => 'اختر اللون',
+        'Color' => 'اللون',
+        'Sizes' => 'المقاسات',
+        'Size Name/Number' => 'اسم/رقم المقاس',
+        'Add Size' => 'إضافة مقاس',
+        'Select Size' => 'اختر المقاس',
+        'Size' => 'المقاس',
+        'Manage colors that can be assigned to school items.' => 'إدارة الألوان التي يمكن تخصيصها لمواد المدرسة.',
+        'Manage sizes that can be assigned to school items.' => 'إدارة المقاسات التي يمكن تخصيصها لمواد المدرسة.',
 
         // Sidebar Menus & Core
         'Olama Stores' => 'المخزون',

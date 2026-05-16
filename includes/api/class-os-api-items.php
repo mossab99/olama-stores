@@ -65,6 +65,22 @@ class OS_API_Items {
             array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_fabric' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
             array( 'methods' => 'DELETE', 'callback' => array( __CLASS__, 'delete_fabric' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
         ) );
+        register_rest_route( self::NS, '/colors', array(
+            array( 'methods' => 'GET',  'callback' => array( __CLASS__, 'get_colors' ), 'permission_callback' => array( __CLASS__, 'can_view' ) ),
+            array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'create_color'), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
+        register_rest_route( self::NS, '/colors/(?P<id>\d+)', array(
+            array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_color' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+            array( 'methods' => 'DELETE', 'callback' => array( __CLASS__, 'delete_color' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
+        register_rest_route( self::NS, '/sizes', array(
+            array( 'methods' => 'GET',  'callback' => array( __CLASS__, 'get_sizes' ), 'permission_callback' => array( __CLASS__, 'can_view' ) ),
+            array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'create_size'), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
+        register_rest_route( self::NS, '/sizes/(?P<id>\d+)', array(
+            array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_size' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+            array( 'methods' => 'DELETE', 'callback' => array( __CLASS__, 'delete_size' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
     }
 
     // ── Permission callbacks ───────────────────────────────────────────────────
@@ -331,6 +347,71 @@ class OS_API_Items {
         global $wpdb;
         $id = (int) $request['id'];
         $wpdb->delete( "{$wpdb->prefix}os_fabrics", array( 'id' => $id ) );
+        return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    // ── Colors ─────────────────────────────────────────────────────────
+    public static function get_colors() {
+        global $wpdb;
+        return rest_ensure_response( $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}os_colors ORDER BY name ASC" ) );
+    }
+
+    public static function create_color( $request ) {
+        global $wpdb;
+        $data = $request->get_json_params();
+        $wpdb->insert( "{$wpdb->prefix}os_colors", array(
+            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+        ) );
+        return rest_ensure_response( array( 'id' => $wpdb->insert_id ), 201 );
+    }
+
+    public static function update_color( $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $data = $request->get_json_params();
+        $wpdb->update( "{$wpdb->prefix}os_colors", array(
+            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+        ), array( 'id' => $id ) );
+        return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    public static function delete_color( $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $wpdb->delete( "{$wpdb->prefix}os_colors", array( 'id' => $id ) );
+        return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    // ── Sizes ─────────────────────────────────────────────────────────
+    public static function get_sizes() {
+        global $wpdb;
+        // Cast name to unsigned for natural sorting if they are numeric
+        return rest_ensure_response( $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}os_sizes ORDER BY CAST(name AS UNSIGNED) ASC, name ASC" ) );
+    }
+
+    public static function create_size( $request ) {
+        global $wpdb;
+        $data = $request->get_json_params();
+        $wpdb->insert( "{$wpdb->prefix}os_sizes", array(
+            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+        ) );
+        return rest_ensure_response( array( 'id' => $wpdb->insert_id ), 201 );
+    }
+
+    public static function update_size( $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $data = $request->get_json_params();
+        $wpdb->update( "{$wpdb->prefix}os_sizes", array(
+            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+        ), array( 'id' => $id ) );
+        return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    public static function delete_size( $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $wpdb->delete( "{$wpdb->prefix}os_sizes", array( 'id' => $id ) );
         return rest_ensure_response( array( 'success' => true ) );
     }
 }

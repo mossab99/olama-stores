@@ -84,6 +84,20 @@ class OS_Activator {
             PRIMARY KEY (id)
         ) $col;";
 
+        // ── os_colors ───────────────────────────────────────────────────────
+        $tables[] = "CREATE TABLE {$p}os_colors (
+            id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name    VARCHAR(150)  NOT NULL,
+            PRIMARY KEY (id)
+        ) $col;";
+
+        // ── os_sizes ─────────────────────────────────────────────────────────
+        $tables[] = "CREATE TABLE {$p}os_sizes (
+            id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name    VARCHAR(150)  NOT NULL,
+            PRIMARY KEY (id)
+        ) $col;";
+
         // ── os_providers ─────────────────────────────────────────────────────
         $tables[] = "CREATE TABLE {$p}os_providers (
             id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -339,6 +353,24 @@ class OS_Activator {
             $default_fabrics = array( 'Cotton 60% - Polyster 40%', 'Indian Fleece', 'Linen', 'Gabardine' );
             foreach ( $default_fabrics as $fabric ) {
                 $wpdb->insert( "{$p}os_fabrics", array( 'name' => $fabric ) );
+            }
+        }
+
+        // Seed default colors
+        $color_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$p}os_colors" );
+        if ( $color_count == 0 ) {
+            $default_colors = array( 'Red', 'Blue', 'Mix Blue-Red' );
+            foreach ( $default_colors as $color ) {
+                $wpdb->insert( "{$p}os_colors", array( 'name' => $color ) );
+            }
+        }
+
+        // Seed default sizes
+        $size_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$p}os_sizes" );
+        if ( $size_count == 0 ) {
+            $default_sizes = array( '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54' );
+            foreach ( $default_sizes as $size ) {
+                $wpdb->insert( "{$p}os_sizes", array( 'name' => $size ) );
             }
         }
     }

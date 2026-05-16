@@ -101,17 +101,13 @@
                 <div class="os-form-row">
                     <label><?php esc_html_e( 'Color', 'olama-stores' ); ?></label>
                     <select id="os-custom-color">
-                        <option value="red"><?php esc_html_e( 'Red', 'olama-stores' ); ?></option>
-                        <option value="blue"><?php esc_html_e( 'Blue', 'olama-stores' ); ?></option>
-                        <option value="mix blue-red"><?php esc_html_e( 'Mix Blue-Red', 'olama-stores' ); ?></option>
+                        <option value=""><?php esc_html_e( 'Select Color', 'olama-stores' ); ?></option>
                     </select>
                 </div>
                 <div class="os-form-row">
                     <label><?php esc_html_e( 'Size', 'olama-stores' ); ?></label>
                     <select id="os-custom-size">
-                        <?php foreach ( array(22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54) as $size ): ?>
-                            <option value="<?php echo $size; ?>"><?php echo $size; ?></option>
-                        <?php endforeach; ?>
+                        <option value=""><?php esc_html_e( 'Select Size', 'olama-stores' ); ?></option>
                     </select>
                 </div>
                 <div class="os-form-row">
@@ -234,6 +230,18 @@
             var html = '<option value=""><?php esc_html_e("Select Fabric","olama-stores");?></option>';
             fabrics.forEach(function(f){ html += '<option value="'+f.name+'">'+f.name+'</option>'; });
             $('#os-custom-fabric').html(html);
+        });
+
+        wp.apiFetch({ path: '/olama-stores/v1/colors' }).then(function(colors){
+            var html = '<option value=""><?php esc_html_e("Select Color","olama-stores");?></option>';
+            colors.forEach(function(c){ html += '<option value="'+c.name+'">'+c.name+'</option>'; });
+            $('#os-custom-color').html(html);
+        });
+
+        wp.apiFetch({ path: '/olama-stores/v1/sizes' }).then(function(sizes){
+            var html = '<option value=""><?php esc_html_e("Select Size","olama-stores");?></option>';
+            sizes.forEach(function(s){ html += '<option value="'+s.name+'">'+s.name+'</option>'; });
+            $('#os-custom-size').html(html);
         });
 
         var unitOpts = '<option value=""></option>';
