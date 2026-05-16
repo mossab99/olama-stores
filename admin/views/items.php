@@ -117,10 +117,7 @@
                 <div class="os-form-row">
                     <label><?php esc_html_e( 'Fabric', 'olama-stores' ); ?></label>
                     <select id="os-custom-fabric">
-                        <option value="Cotton 60% - Polyster 40%"><?php esc_html_e( 'Cotton 60% - Polyster 40%', 'olama-stores' ); ?></option>
-                        <option value="Indian Fleece"><?php esc_html_e( 'Indian Fleece', 'olama-stores' ); ?></option>
-                        <option value="Linen"><?php esc_html_e( 'Linen', 'olama-stores' ); ?></option>
-                        <option value="Gabardine"><?php esc_html_e( 'Gabardine', 'olama-stores' ); ?></option>
+                        <option value=""><?php esc_html_e( 'Select Fabric', 'olama-stores' ); ?></option>
                     </select>
                 </div>
                 <div class="os-form-row">
@@ -231,6 +228,12 @@
             var html = '<option value=""><?php esc_html_e("Select Model","olama-stores");?></option>';
             models.forEach(function(m){ html += '<option value="'+m.id+'">'+m.name+'</option>'; });
             $('#os-custom-model').html(html);
+        });
+
+        wp.apiFetch({ path: '/olama-stores/v1/fabrics' }).then(function(fabrics){
+            var html = '<option value=""><?php esc_html_e("Select Fabric","olama-stores");?></option>';
+            fabrics.forEach(function(f){ html += '<option value="'+f.name+'">'+f.name+'</option>'; });
+            $('#os-custom-fabric').html(html);
         });
 
         var unitOpts = '<option value=""></option>';

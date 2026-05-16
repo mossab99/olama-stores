@@ -39,6 +39,13 @@ class OS_Helpers
         }
 
         static $map = array(
+        // Fabrics
+        'Fabrics' => 'الأقمشة',
+        'Fabric Name' => 'اسم القماش',
+        'Add Fabric' => 'إضافة قماش',
+        'Select Fabric' => 'اختر القماش',
+        'Fabric' => 'القماش',
+
         // Sidebar Menus & Core
         'Olama Stores' => 'المخزون',
         'Dashboard' => 'لوحة القيادة',

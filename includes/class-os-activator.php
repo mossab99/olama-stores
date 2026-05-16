@@ -77,6 +77,13 @@ class OS_Activator {
             PRIMARY KEY (id)
         ) $col;";
 
+        // ── os_fabrics ───────────────────────────────────────────────────────
+        $tables[] = "CREATE TABLE {$p}os_fabrics (
+            id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name    VARCHAR(150)  NOT NULL,
+            PRIMARY KEY (id)
+        ) $col;";
+
         // ── os_providers ─────────────────────────────────────────────────────
         $tables[] = "CREATE TABLE {$p}os_providers (
             id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -324,6 +331,15 @@ class OS_Activator {
 
         if ( $wpdb->last_error ) {
             error_log( '[Olama Stores] DB Error during create_tables: ' . $wpdb->last_error );
+        }
+
+        // Seed default fabrics
+        $fabric_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$p}os_fabrics" );
+        if ( $fabric_count == 0 ) {
+            $default_fabrics = array( 'Cotton 60% - Polyster 40%', 'Indian Fleece', 'Linen', 'Gabardine' );
+            foreach ( $default_fabrics as $fabric ) {
+                $wpdb->insert( "{$p}os_fabrics", array( 'name' => $fabric ) );
+            }
         }
     }
 

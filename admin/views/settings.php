@@ -11,6 +11,7 @@
         <a href="#tab-units" class="nav-tab" data-tab="units"><?php esc_html_e( 'Units', 'olama-stores' ); ?></a>
         <a href="#tab-providers" class="nav-tab" data-tab="providers"><?php esc_html_e( 'Providers', 'olama-stores' ); ?></a>
         <a href="#tab-custom-models" class="nav-tab" data-tab="custom-models"><?php esc_html_e( 'Custom Models', 'olama-stores' ); ?></a>
+        <a href="#tab-fabrics" class="nav-tab" data-tab="fabrics"><?php esc_html_e( 'Fabrics', 'olama-stores' ); ?></a>
         <a href="#tab-integration" class="nav-tab" data-tab="integration"><?php esc_html_e( 'School Integration', 'olama-stores' ); ?></a>
     </div>
 
@@ -202,6 +203,21 @@
             </div>
         </div>
     </div>
+
+    <!-- Fabrics Tab -->
+    <div id="tab-fabrics" class="os-tab-content" style="display:none;">
+        <h2><?php esc_html_e( 'Fabrics', 'olama-stores' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Manage fabric types that can be assigned to school items.', 'olama-stores' ); ?></p>
+        <div id="os-fabrics-manager">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="os-new-fabric-name" placeholder="<?php esc_attr_e('Fabric Name', 'olama-stores');?>" style="flex: 1;">
+                <button type="button" class="button button-primary" id="os-btn-add-fabric"><?php esc_html_e('Add Fabric', 'olama-stores');?></button>
+            </div>
+            <div id="os-fabrics-list">
+                <span class="os-loading"><?php esc_html_e( 'Loading…', 'olama-stores' ); ?></span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -218,6 +234,7 @@
         if($(this).data('tab')==='units') loadUnits();
         if($(this).data('tab')==='providers') loadProviders();
         if($(this).data('tab')==='custom-models') loadCustomModels();
+        if($(this).data('tab')==='fabrics') loadFabrics();
     });
     function loadWarehouses(){
         wp.apiFetch({ path:'/olama-stores/v1/warehouses' }).then(function(rows){
@@ -280,6 +297,22 @@
         });
     }
 
+    function loadFabrics(){
+        wp.apiFetch({ path:'/olama-stores/v1/fabrics' }).then(function(rows){
+            var html='<table class="wp-list-table widefat"><thead><tr><th>ID</th><th><?php esc_html_e("Name","olama-stores");?></th><th style="width: 100px;"><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
+            rows.forEach(function(f){ 
+                html+='<tr data-id="'+f.id+'"><td>'+f.id+'</td>'
+                    + '<td><span class="view-mode">'+f.name+'</span><input type="text" class="edit-mode-name os-input" value="'+f.name+'" style="display:none; width: 100%;"></td>'
+                    + '<td>'
+                    + '<button type="button" class="button button-small os-edit-row"><span class="dashicons dashicons-edit"></span></button> '
+                    + '<button type="button" class="button button-small os-save-row" style="display:none;"><span class="dashicons dashicons-yes"></span></button> '
+                    + '<button type="button" class="button button-small button-link-delete os-delete-row"><span class="dashicons dashicons-trash"></span></button>'
+                    + '</td></tr>'; 
+            });
+            $('#os-fabrics-list').html(html+'</tbody></table>');
+        });
+    }
+
     $('#os-btn-add-cat').on('click', function(){
         var name = $('#os-new-cat-name').val();
         if(!name) return;
@@ -308,6 +341,15 @@
         });
     });
 
+    $('#os-btn-add-fabric').on('click', function(){
+        var name = $('#os-new-fabric-name').val();
+        if(!name) return;
+        wp.apiFetch({ path:'/olama-stores/v1/fabrics', method:'POST', data:{ name: name } }).then(function(){
+            $('#os-new-fabric-name').val('');
+            loadFabrics();
+        });
+    });
+
     $(document).on('click', '.os-edit-row', function(){
         var row = $(this).closest('tr');
         row.find('.view-mode').hide();
@@ -332,6 +374,11 @@
             wp.apiFetch({ path: '/olama-stores/v1/custom-models/' + id, method: 'PUT', data: payload }).then(function(){
                 loadCustomModels();
             });
+        } else if (tab === 'tab-fabrics') {
+            payload.name = row.find('.edit-mode-name').val();
+            wp.apiFetch({ path: '/olama-stores/v1/fabrics/' + id, method: 'PUT', data: payload }).then(function(){
+                loadFabrics();
+            });
         } else {
             payload.name = row.find('.edit-mode-name').val();
             payload.symbol = row.find('.edit-mode-symbol').val();
@@ -349,11 +396,13 @@
         var path = '';
         if (tab === 'tab-categories') path = '/olama-stores/v1/categories/';
         else if (tab === 'tab-custom-models') path = '/olama-stores/v1/custom-models/';
+        else if (tab === 'tab-fabrics') path = '/olama-stores/v1/fabrics/';
         else path = '/olama-stores/v1/units/';
 
         wp.apiFetch({ path: path + id, method: 'DELETE' }).then(function(){
             if (tab === 'tab-categories') loadCategories(); 
             else if (tab === 'tab-custom-models') loadCustomModels();
+            else if (tab === 'tab-fabrics') loadFabrics();
             else loadUnits();
         });
     });

@@ -57,6 +57,14 @@ class OS_API_Items {
             array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_custom_model' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
             array( 'methods' => 'DELETE', 'callback' => array( __CLASS__, 'delete_custom_model' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
         ) );
+        register_rest_route( self::NS, '/fabrics', array(
+            array( 'methods' => 'GET',  'callback' => array( __CLASS__, 'get_fabrics' ), 'permission_callback' => array( __CLASS__, 'can_view' ) ),
+            array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'create_fabric'), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
+        register_rest_route( self::NS, '/fabrics/(?P<id>\d+)', array(
+            array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_fabric' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+            array( 'methods' => 'DELETE', 'callback' => array( __CLASS__, 'delete_fabric' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
     }
 
     // ── Permission callbacks ───────────────────────────────────────────────────
@@ -291,6 +299,38 @@ class OS_API_Items {
         global $wpdb;
         $id = (int) $request['id'];
         $wpdb->delete( "{$wpdb->prefix}os_custom_models", array( 'id' => $id ) );
+        return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    // ── Fabrics ─────────────────────────────────────────────────────────
+    public static function get_fabrics() {
+        global $wpdb;
+        return rest_ensure_response( $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}os_fabrics ORDER BY name ASC" ) );
+    }
+
+    public static function create_fabric( $request ) {
+        global $wpdb;
+        $data = $request->get_json_params();
+        $wpdb->insert( "{$wpdb->prefix}os_fabrics", array(
+            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+        ) );
+        return rest_ensure_response( array( 'id' => $wpdb->insert_id ), 201 );
+    }
+
+    public static function update_fabric( $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $data = $request->get_json_params();
+        $wpdb->update( "{$wpdb->prefix}os_fabrics", array(
+            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+        ), array( 'id' => $id ) );
+        return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    public static function delete_fabric( $request ) {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $wpdb->delete( "{$wpdb->prefix}os_fabrics", array( 'id' => $id ) );
         return rest_ensure_response( array( 'success' => true ) );
     }
 }
