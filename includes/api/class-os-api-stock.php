@@ -10,6 +10,14 @@ class OS_API_Stock {
             'methods' => 'GET', 'callback' => array( __CLASS__, 'get_stock' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_view_stock' ); },
         ) );
+        register_rest_route( self::NS, '/stock/reset-testing', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'reset_testing' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_manage_settings' ); },
+        ) );
+        register_rest_route( self::NS, '/stock/delete-transactions', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'delete_transactions' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_manage_settings' ) || current_user_can( 'manage_options' ); },
+        ) );
         register_rest_route( self::NS, '/stock/receive', array(
             'methods' => 'POST', 'callback' => array( __CLASS__, 'receive_stock' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
@@ -41,8 +49,18 @@ class OS_API_Stock {
             'item_id'         => (int) $request->get_param( 'item_id' ),
             'category_id'     => (int) $request->get_param( 'category_id' ),
             'low_stock_only'  => (bool) $request->get_param( 'low_stock_only' ),
+            'orderby'         => sanitize_text_field( $request->get_param( 'orderby' ) ),
+            'order'           => sanitize_text_field( $request->get_param( 'order' ) ),
+            'paged'           => (int) $request->get_param( 'paged' ),
+            'per_page'        => (int) $request->get_param( 'per_page' ),
         ) );
         return rest_ensure_response( OS_Stock_Service::get_stock_levels( $args ) );
+    }
+
+    public static function reset_testing( $request ) {
+        $result = OS_Stock_Service::reset_store_data_testing();
+        if ( is_wp_error( $result ) ) { return $result; }
+        return rest_ensure_response( array( 'success' => true ) );
     }
 
     public static function receive_stock( $request ) {
@@ -95,5 +113,31 @@ class OS_API_Stock {
     public static function update_warehouse( $request ) {
         $id = OS_Warehouse::update( (int) $request['id'], $request->get_json_params() );
         return rest_ensure_response( array( 'id' => $id ) );
+    }
+
+    public static function delete_transactions( $request ) {
+        $data = $request->get_json_params() ?: array();
+
+        $filters = array();
+        if ( ! empty( $data['item_id'] ) ) {
+            $filters['item_id'] = (int) $data['item_id'];
+        }
+        if ( ! empty( $data['provider_id'] ) ) {
+            $filters['provider_id'] = (int) $data['provider_id'];
+        }
+        if ( ! empty( $data['start_date'] ) ) {
+            $filters['start_date'] = sanitize_text_field( $data['start_date'] );
+        }
+        if ( ! empty( $data['end_date'] ) ) {
+            $filters['end_date'] = sanitize_text_field( $data['end_date'] );
+        }
+
+        if ( empty( $filters ) ) {
+            return new WP_Error( 'missing_filters', __( 'Please specify at least one filter.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+
+        $result = OS_Stock_Service::delete_transactions_testing( $filters );
+        if ( is_wp_error( $result ) ) { return $result; }
+        return rest_ensure_response( array( 'success' => true ) );
     }
 }

@@ -675,7 +675,54 @@ class OS_Stock_Service {
             $params[]  = (int) $args['category_id'];
         }
 
+        // Apply low stock filter directly in SQL for accurate pagination counts
+        if ( ! empty( $args['low_stock_only'] ) ) {
+            $where[] = '(s.quantity_on_hand - s.quantity_reserved) <= i.min_stock_level';
+        }
+
         $where_sql = implode( ' AND ', $where );
+
+        // Sorting mapping
+        $orderby_map = array(
+            'name'              => 'i.name',
+            'sku'               => 'i.sku',
+            'warehouse_name'    => 'w.name',
+            'quantity_on_hand'  => 's.quantity_on_hand',
+            'quantity_reserved' => 's.quantity_reserved',
+            'quantity_available'=> '(s.quantity_on_hand - s.quantity_reserved)',
+            'min_stock_level'   => 'i.min_stock_level',
+        );
+
+        $orderby = 'i.name';
+        if ( ! empty( $args['orderby'] ) && isset( $orderby_map[ $args['orderby'] ] ) ) {
+            $orderby = $orderby_map[ $args['orderby'] ];
+        }
+
+        $order = 'ASC';
+        if ( ! empty( $args['order'] ) && in_array( strtoupper( $args['order'] ), array( 'ASC', 'DESC' ), true ) ) {
+            $order = strtoupper( $args['order'] );
+        }
+
+        // Count query if paginated
+        $is_paginated = isset( $args['paged'] ) && isset( $args['per_page'] );
+        $total = 0;
+        $pages = 0;
+
+        if ( $is_paginated ) {
+            $count_sql = "SELECT COUNT(*)
+                          FROM {$wpdb->prefix}os_stock s
+                          JOIN {$wpdb->prefix}os_items i ON s.item_id = i.id
+                          LEFT JOIN {$wpdb->prefix}os_categories c ON i.category_id = c.id
+                          LEFT JOIN {$wpdb->prefix}os_units u ON i.unit_id = u.id
+                          LEFT JOIN {$wpdb->prefix}os_warehouses w ON s.warehouse_id = w.id
+                          WHERE $where_sql";
+            $total = (int) ( $params ? $wpdb->get_var( $wpdb->prepare( $count_sql, ...$params ) ) : $wpdb->get_var( $count_sql ) );
+
+            $limit = max( 1, (int) $args['per_page'] );
+            $page  = max( 1, (int) $args['paged'] );
+            $pages = ceil( $total / $limit );
+            $offset = ( $page - 1 ) * $limit;
+        }
 
         $sql = "SELECT
                     s.*,
@@ -691,17 +738,22 @@ class OS_Stock_Service {
                 LEFT JOIN {$wpdb->prefix}os_units u ON i.unit_id = u.id
                 LEFT JOIN {$wpdb->prefix}os_warehouses w ON s.warehouse_id = w.id
                 WHERE $where_sql
-                ORDER BY i.name ASC";
+                ORDER BY $orderby $order";
+
+        if ( $is_paginated ) {
+            $sql .= $wpdb->prepare( " LIMIT %d OFFSET %d", $limit, $offset );
+        }
 
         $results = $params
             ? $wpdb->get_results( $wpdb->prepare( $sql, ...$params ) )
             : $wpdb->get_results( $sql );
 
-        // Apply low_stock_only filter in PHP (avoids complex SQL with computed column in WHERE)
-        if ( ! empty( $args['low_stock_only'] ) ) {
-            $results = array_filter( $results, function ( $row ) {
-                return (int) $row->quantity_available <= (int) $row->min_stock_level;
-            } );
+        if ( $is_paginated ) {
+            return array(
+                'items' => array_values( $results ),
+                'total' => $total,
+                'pages' => $pages,
+            );
         }
 
         return array_values( $results );
@@ -734,5 +786,236 @@ class OS_Stock_Service {
 
         // Also store as transient for admin notice
         set_transient( 'os_low_stock_items', $low, DAY_IN_SECONDS );
+    }
+
+    /**
+     * Delete all store transactions (movements, assignments, returns, transfers, inventory counts)
+     * and zero the stock balance of all items. For testing purposes only.
+     *
+     * @return bool|WP_Error
+     */
+    public static function reset_store_data_testing() {
+        global $wpdb;
+
+        if ( ! OS_Roles::can( 'os_manage_settings' ) ) {
+            return new WP_Error( 'unauthorized', __( 'Only administrators or users with settings management capability can reset store data.', 'olama-stores' ) );
+        }
+
+        $wpdb->query( 'START TRANSACTION' );
+
+        // Truncate or delete from all transaction/history tables
+        $tables_to_clear = array(
+            "{$wpdb->prefix}os_stock_movements",
+            "{$wpdb->prefix}os_assignments",
+            "{$wpdb->prefix}os_assignment_returns",
+            "{$wpdb->prefix}os_transfers",
+            "{$wpdb->prefix}os_inventory_counts",
+            "{$wpdb->prefix}os_inventory_count_lines",
+            "{$wpdb->prefix}os_audit_log"
+        );
+
+        foreach ( $tables_to_clear as $table ) {
+            $ok = $wpdb->query( "DELETE FROM $table" );
+            if ( false === $ok ) {
+                $wpdb->query( 'ROLLBACK' );
+                return new WP_Error( 'db_error', sprintf( __( 'Failed to clear table %s.', 'olama-stores' ), $table ) );
+            }
+        }
+
+        // Zero the stock quantities for all items
+        $ok = $wpdb->query( "UPDATE {$wpdb->prefix}os_stock SET quantity_on_hand = 0, quantity_reserved = 0" );
+        if ( false === $ok ) {
+            $wpdb->query( 'ROLLBACK' );
+            return new WP_Error( 'db_error', __( 'Failed to zero stock balances.', 'olama-stores' ) );
+        }
+
+        $wpdb->query( 'COMMIT' );
+
+        // Log reset event
+        OS_Audit_Service::log( 'system', 0, 'reset_store_data_testing', null, array( 'reset_by' => get_current_user_id() ) );
+
+        return true;
+    }
+
+    /**
+     * Delete transactions based on filters (date, provider, item) and reverse stock effects.
+     * For testing purposes only.
+     *
+     * @param  array $filters  item_id, provider_id, start_date, end_date.
+     * @return bool|WP_Error
+     */
+    public static function delete_transactions_testing( $filters ) {
+        global $wpdb;
+
+        if ( ! current_user_can( 'manage_options' ) && ! OS_Roles::can( 'os_manage_settings' ) ) {
+            return new WP_Error( 'unauthorized', __( 'Only administrators or users with settings management capability can delete transactions.', 'olama-stores' ) );
+        }
+
+        $where = array();
+        $params = array();
+
+        if ( ! empty( $filters['item_id'] ) ) {
+            $where[] = "m.item_id = %d";
+            $params[] = (int) $filters['item_id'];
+        }
+
+        if ( ! empty( $filters['provider_id'] ) ) {
+            $where[] = "m.item_id IN (SELECT id FROM {$wpdb->prefix}os_items WHERE provider_id = %d)";
+            $params[] = (int) $filters['provider_id'];
+        }
+
+        if ( ! empty( $filters['start_date'] ) ) {
+            $where[] = "m.performed_at >= %s";
+            $params[] = sanitize_text_field( $filters['start_date'] ) . ' 00:00:00';
+        }
+
+        if ( ! empty( $filters['end_date'] ) ) {
+            $where[] = "m.performed_at <= %s";
+            $params[] = sanitize_text_field( $filters['end_date'] ) . ' 23:59:59';
+        }
+
+        if ( empty( $where ) ) {
+            return new WP_Error( 'missing_filters', __( 'Please specify at least one filter to delete transactions.', 'olama-stores' ) );
+        }
+
+        $where_sql = implode( ' AND ', $where );
+
+        $wpdb->query( 'START TRANSACTION' );
+
+        // 1. Retrieve all matching stock movements
+        $sql = "SELECT m.* FROM {$wpdb->prefix}os_stock_movements m WHERE $where_sql";
+        $movements = $params ? $wpdb->get_results( $wpdb->prepare( $sql, ...$params ) ) : $wpdb->get_results( $sql );
+
+        if ( empty( $movements ) ) {
+            $wpdb->query( 'COMMIT' );
+            return true; // Nothing to delete
+        }
+
+        $movement_ids = array();
+        $assignment_ids = array();
+        $return_ids = array();
+        $transfer_ids = array();
+        $count_ids = array();
+
+        // 2. Process each movement to reverse its stock effect and collect related entity IDs
+        foreach ( $movements as $m ) {
+            $movement_ids[] = (int) $m->id;
+            $qty = (int) $m->quantity;
+            $item_id = (int) $m->item_id;
+            $warehouse_id = (int) $m->warehouse_id;
+
+            // Collect references
+            if ( $m->reference_type === 'assignment' && ! empty( $m->reference_id ) ) {
+                $assignment_ids[] = (int) $m->reference_id;
+            } elseif ( $m->reference_type === 'return' && ! empty( $m->reference_id ) ) {
+                $return_ids[] = (int) $m->reference_id;
+            } elseif ( $m->reference_type === 'transfer' && ! empty( $m->reference_id ) ) {
+                $transfer_ids[] = (int) $m->reference_id;
+            } elseif ( $m->reference_type === 'inventory_count' && ! empty( $m->reference_id ) ) {
+                $count_ids[] = (int) $m->reference_id;
+            }
+
+            // Reverse stock effect
+            $stock = $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}os_stock WHERE item_id = %d AND warehouse_id = %d FOR UPDATE",
+                $item_id, $warehouse_id
+            ) );
+
+            if ( $stock ) {
+                $new_on_hand = (int) $stock->quantity_on_hand;
+                $new_reserved = (int) $stock->quantity_reserved;
+
+                switch ( $m->movement_type ) {
+                    case self::PURCHASE_RECEIPT:
+                    case self::OPENING_BALANCE:
+                    case self::ADJUSTMENT_ADD:
+                    case self::TRANSFER_IN:
+                        $new_on_hand = max( 0, $new_on_hand - $qty );
+                        break;
+
+                    case self::ADJUSTMENT_SUB:
+                    case self::DAMAGE_LOSS:
+                    case self::TRANSFER_OUT:
+                        $new_on_hand = $new_on_hand + $qty;
+                        break;
+
+                    case self::ISSUE_EMPLOYEE:
+                    case self::ISSUE_STUDENT:
+                        $new_reserved = max( 0, $new_reserved - $qty );
+                        break;
+
+                    case self::RETURN_EMPLOYEE:
+                    case self::RETURN_STUDENT:
+                        // Find the return condition to know if it was 'lost'
+                        $return_condition = 'good';
+                        if ( ! empty( $m->reference_id ) ) {
+                            $cond = $wpdb->get_var( $wpdb->prepare(
+                                "SELECT return_condition FROM {$wpdb->prefix}os_assignment_returns WHERE id = %d",
+                                $m->reference_id
+                            ) );
+                            if ( $cond ) {
+                                $return_condition = $cond;
+                            }
+                        }
+
+                        if ( $return_condition === 'lost' ) {
+                            $new_reserved = $new_reserved + $qty;
+                        } else {
+                            $new_on_hand = max( 0, $new_on_hand - $qty );
+                            $new_reserved = $new_reserved + $qty;
+                        }
+                        break;
+                }
+
+                $wpdb->update(
+                    "{$wpdb->prefix}os_stock",
+                    array(
+                        'quantity_on_hand' => $new_on_hand,
+                        'quantity_reserved'=> $new_reserved,
+                        'last_updated_at'  => current_time( 'mysql', 1 )
+                    ),
+                    array( 'id' => $stock->id )
+                );
+            }
+        }
+
+        // 3. Delete matching entities from database
+        if ( ! empty( $movement_ids ) ) {
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_stock_movements WHERE id IN (" . implode( ',', $movement_ids ) . ")" );
+        }
+
+        // Delete assignments and their associated returns
+        if ( ! empty( $assignment_ids ) ) {
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_assignments WHERE id IN (" . implode( ',', $assignment_ids ) . ")" );
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_assignment_returns WHERE assignment_id IN (" . implode( ',', $assignment_ids ) . ")" );
+        }
+
+        // Delete returns directly if referenced
+        if ( ! empty( $return_ids ) ) {
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_assignment_returns WHERE id IN (" . implode( ',', $return_ids ) . ")" );
+        }
+
+        // Delete transfers
+        if ( ! empty( $transfer_ids ) ) {
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_transfers WHERE id IN (" . implode( ',', $transfer_ids ) . ")" );
+        }
+
+        // Delete inventory counts
+        if ( ! empty( $count_ids ) ) {
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_inventory_counts WHERE id IN (" . implode( ',', $count_ids ) . ")" );
+            $wpdb->query( "DELETE FROM {$wpdb->prefix}os_inventory_count_lines WHERE count_id IN (" . implode( ',', $count_ids ) . ")" );
+        }
+
+        $wpdb->query( 'COMMIT' );
+
+        // Log audit event
+        OS_Audit_Service::log( 'system', 0, 'delete_transactions_testing', null, array(
+            'filters' => $filters,
+            'deleted_movements_count' => count( $movement_ids ),
+            'deleted_assignments_count' => count( $assignment_ids ),
+            'deleted_by' => get_current_user_id()
+        ) );
+
+        return true;
     }
 }

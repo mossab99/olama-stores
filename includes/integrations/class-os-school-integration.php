@@ -225,7 +225,7 @@ class OS_School_Integration {
         if ( ! class_exists( 'Olama_School_DB' ) ) { return array(); }
         global $wpdb;
 
-        $query = "SELECT s.*, sec.section_name, g.grade_name
+        $query = "SELECT s.*, sec.section_name, g.grade_name, g.id AS grade_id
                  FROM {$wpdb->prefix}olama_students s
                  JOIN {$wpdb->prefix}olama_student_enrollment e ON s.student_uid = e.student_uid
                  JOIN {$wpdb->prefix}olama_sections sec ON e.section_id = sec.id

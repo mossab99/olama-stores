@@ -174,4 +174,112 @@
     color: #92400e !important;
 }
 
+/* Sortable column headers */
+.os-wrap table thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 26px !important;
+    transition: background-color 0.2s ease;
+}
+.os-wrap table thead th.sortable:hover {
+    background-color: #0b5ed7 !important; /* Slightly darker than BS5 Primary */
+}
+.os-wrap table thead th.sortable::after {
+    content: '⇅';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.45;
+    font-size: 0.9em;
+    font-family: inherit;
+}
+.os-wrap table thead th.sorted.asc::after {
+    content: '▲';
+    opacity: 1;
+}
+.os-wrap table thead th.sorted.desc::after {
+    content: '▼';
+    opacity: 1;
+}
+
+/* Pagination container and elements */
+.os-pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding: 12px 16px;
+    background: var(--os-surface);
+    border: 1px solid var(--os-border);
+    border-radius: var(--os-radius);
+    box-shadow: var(--os-shadow-sm);
+}
+
+.os-pagination-info {
+    font-size: 0.875rem;
+    color: var(--os-text-muted);
+}
+
+.os-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.os-pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--os-secondary);
+    background: #fff;
+    border: 1px solid var(--os-border);
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.os-pagination-btn:hover:not(:disabled) {
+    color: var(--os-primary);
+    border-color: var(--os-primary);
+    background-color: #f8f9fa;
+}
+
+.os-pagination-btn.active {
+    color: #fff;
+    background-color: var(--os-primary);
+    border-color: var(--os-primary);
+    cursor: default;
+}
+
+.os-pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.os-per-page-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: var(--os-text-muted);
+}
+
+.os-per-page-select-wrap select {
+    cursor: pointer;
+    border: 1px solid var(--os-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    height: auto;
+    font-size: 0.875rem;
+    background-color: #fff;
+}
+
 

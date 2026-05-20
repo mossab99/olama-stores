@@ -72,6 +72,7 @@ class OS_Admin
         add_submenu_page('olama-stores', __('Stock', 'olama-stores'), __('Stock', 'olama-stores'), 'os_view_stock', 'olama-stores-stock', array($this, 'page_stock'));
         add_submenu_page('olama-stores', __('Employee Custody', 'olama-stores'), __('Employee Custody', 'olama-stores'), 'os_view_assignments', 'olama-stores-assignments', array($this, 'page_assignments'));
         add_submenu_page('olama-stores', __('Student Withdrawals', 'olama-stores'), __('Student Withdrawals', 'olama-stores'), 'os_view_assignments', 'olama-stores-withdrawals', array($this, 'page_withdrawals'));
+        add_submenu_page('olama-stores', __('Books Withdrawal', 'olama-stores'), __('Books Withdrawal', 'olama-stores'), 'os_view_assignments', 'olama-stores-books-withdrawal', array($this, 'page_books_withdrawal'));
         add_submenu_page('olama-stores', __('Reports', 'olama-stores'), __('Reports', 'olama-stores'), 'os_view_reports', 'olama-stores-reports', array($this, 'page_reports'));
         add_submenu_page('olama-stores', __('Order Estimation', 'olama-stores'), __('Order Estimation', 'olama-stores'), 'manage_options', 'olama-stores-order-estimation', array($this, 'page_order_estimation'));
 
@@ -137,6 +138,10 @@ class OS_Admin
     public function page_withdrawals()
     {
         $this->render_view('withdrawals');
+    }
+    public function page_books_withdrawal()
+    {
+        $this->render_view('books-withdrawal');
     }
     public function page_reports()
     {

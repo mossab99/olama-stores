@@ -4,7 +4,7 @@
         <span class="dashicons dashicons-admin-settings"></span>
         <?php esc_html_e( 'Olama Stores Settings', 'olama-stores' ); ?>
     </h1>
-
+    <div class="nav-tab-wrapper">
         <a href="#tab-general"    class="nav-tab nav-tab-active" data-tab="general"><?php esc_html_e( 'General', 'olama-stores' ); ?></a>
         <a href="#tab-warehouses" class="nav-tab" data-tab="warehouses"><?php esc_html_e( 'Warehouses', 'olama-stores' ); ?></a>
         <a href="#tab-categories" class="nav-tab" data-tab="categories"><?php esc_html_e( 'Categories', 'olama-stores' ); ?></a>
@@ -15,6 +15,7 @@
         <a href="#tab-colors" class="nav-tab" data-tab="colors"><?php esc_html_e( 'Colors', 'olama-stores' ); ?></a>
         <a href="#tab-sizes" class="nav-tab" data-tab="sizes"><?php esc_html_e( 'Sizes', 'olama-stores' ); ?></a>
         <a href="#tab-integration" class="nav-tab" data-tab="integration"><?php esc_html_e( 'School Integration', 'olama-stores' ); ?></a>
+        <a href="#tab-maintenance" class="nav-tab" data-tab="maintenance"><?php esc_html_e( 'Maintenance', 'olama-stores' ); ?></a>
     </div>
 
     <!-- General Tab -->
@@ -190,6 +191,32 @@
             </p></div>
         <?php endif; ?>
     </div>
+
+    <!-- Maintenance Tab -->
+    <div id="tab-maintenance" class="os-tab-content" style="display:none;">
+        <h2><?php esc_html_e( 'Maintenance & Testing', 'olama-stores' ); ?></h2>
+        <div class="card" style="max-width: 600px; border: 1px solid #ccd0d4; background: #fff; padding: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04); margin-top: 20px; border-radius: var(--os-radius);">
+            <h3 style="color: #d63638; margin-top: 0; display: flex; align-items: center; gap: 8px;">
+                <span class="dashicons dashicons-warning" style="color: #d63638;"></span>
+                <?php esc_html_e( 'Reset Store Data (Testing Only)', 'olama-stores' ); ?>
+            </h3>
+            <p><?php esc_html_e( 'This action is destructive and cannot be undone. It will:', 'olama-stores' ); ?></p>
+            <ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 20px;">
+                <li><?php esc_html_e( 'Delete all transaction data, including: stock movements, employee custody, student withdrawals, books withdrawals, and transfers.', 'olama-stores' ); ?></li>
+                <li><?php esc_html_e( 'Zero the balance (On Hand & Reserved) of all items across all warehouses.', 'olama-stores' ); ?></li>
+                <li><?php esc_html_e( 'Clear the audit log history.', 'olama-stores' ); ?></li>
+            </ul>
+            <p style="font-weight: bold; color: #d63638; margin-bottom: 20px;">
+                <?php esc_html_e( 'Please proceed with caution. This feature is intended for development and testing environments only.', 'olama-stores' ); ?>
+            </p>
+            <div>
+                <button type="button" class="button" id="os-btn-reset-store-data" style="background: #d63638; color: #fff; border-color: #d63638; padding: 5px 15px; height: auto; text-decoration: none; font-weight: 600;">
+                    <?php esc_html_e( 'Delete All Transactions & Zero Balances', 'olama-stores' ); ?>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Custom Models Tab -->
     <div id="tab-custom-models" class="os-tab-content" style="display:none;">
@@ -616,6 +643,35 @@
         wp.apiFetch({ path: '/olama-stores/v1/providers/' + $(this).data('id'), method: 'DELETE' }).then(function(){
             loadProviders();
         }).catch(function(e){ alert(e.message); });
+    });
+
+    // Reset Store Data for Testing
+    $('#os-btn-reset-store-data').on('click', function(e){
+        e.preventDefault();
+        
+        var confirm1 = confirm('<?php echo esc_js( __("WARNING: You are about to DELETE all transactions (movements, assignments, transfers, inventory counts) and zero all stock balances. This action is irreversible. Are you sure you want to proceed?", "olama-stores") ); ?>');
+        if (!confirm1) {
+            return;
+        }
+        
+        var confirm2 = confirm('<?php echo esc_js( __("FINAL WARNING: Are you absolutely sure? Click OK to execute data reset.", "olama-stores") ); ?>');
+        if (!confirm2) {
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).text('<?php echo esc_js( __("Resetting store data...", "olama-stores") ); ?>').css('background', '#777');
+
+        wp.apiFetch({
+            path: '/olama-stores/v1/stock/reset-testing',
+            method: 'POST'
+        }).then(function(response) {
+            alert('<?php echo esc_js( __("Store data has been successfully reset. All transactions are deleted, and stock levels are set to zero.", "olama-stores") ); ?>');
+            location.reload();
+        }).catch(function(error) {
+            alert('<?php echo esc_js( __("Error resetting store data: ", "olama-stores") ); ?>' + error.message);
+            btn.prop('disabled', false).text('<?php echo esc_js( __("Delete All Transactions & Zero Balances", "olama-stores") ); ?>').css('background', '#d63638');
+        });
     });
 
     // Close modals

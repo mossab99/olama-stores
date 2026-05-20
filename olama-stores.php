@@ -57,6 +57,7 @@ function os_load_includes() {
     require_once OS_PATH . 'includes/api/class-os-api-stock.php';
     require_once OS_PATH . 'includes/api/class-os-api-assignments.php';
     require_once OS_PATH . 'includes/api/class-os-api-reports.php';
+    require_once OS_PATH . 'includes/api/class-os-api-books-withdrawal.php';
     require_once OS_PATH . 'includes/ajax/class-os-estimation-ajax.php';
     require_once OS_PATH . 'includes/models/class-os-uniform-size.php';
     require_once OS_PATH . 'includes/ajax/class-os-uniform-size-ajax.php';
@@ -114,6 +115,7 @@ function os_init() {
         OS_API_Stock::register_routes();
         OS_API_Assignments::register_routes();
         OS_API_Reports::register_routes();
+        OS_API_Books_Withdrawal::register_routes();
     } );
 
     if ( is_admin() ) { new OS_Admin(); }
