@@ -225,11 +225,26 @@
             pagHtml += '<button type="button" class="os-pagination-btn" id="os-pag-prev" '+prevDisabled+'>&laquo;</button>';
 
             // Page buttons
-            var startPage = Math.max(1, currentPaged - 2);
-            var endPage = Math.min(pages, currentPaged + 2);
+            var maxButtons = 5;
+            var startPage = 1;
+            var endPage = pages;
+
+            if (pages > maxButtons) {
+                var half = Math.floor(maxButtons / 2);
+                startPage = currentPaged - half;
+                endPage = currentPaged + half;
+
+                if (startPage < 1) {
+                    endPage = maxButtons;
+                    startPage = 1;
+                } else if (endPage > pages) {
+                    startPage = pages - maxButtons + 1;
+                    endPage = pages;
+                }
+            }
 
             if (startPage > 1) {
-                pagHtml += '<button type="button" class="os-pagination-btn '+(currentPaged===1?'active':'')+'" data-page="1">1</button>';
+                pagHtml += '<button type="button" class="os-pagination-btn" data-page="1">1</button>';
                 if (startPage > 2) {
                     pagHtml += '<span style="padding: 0 4px; color: var(--os-text-muted);">...</span>';
                 }
@@ -244,7 +259,7 @@
                 if (endPage < pages - 1) {
                     pagHtml += '<span style="padding: 0 4px; color: var(--os-text-muted);">...</span>';
                 }
-                pagHtml += '<button type="button" class="os-pagination-btn '+(currentPaged===pages?'active':'')+'" data-page="'+pages+'">'+pages+'</button>';
+                pagHtml += '<button type="button" class="os-pagination-btn" data-page="'+pages+'">'+pages+'</button>';
             }
 
             // Next button
@@ -434,5 +449,81 @@
     background-color: #b32d2e !important;
     border-color: #b32d2e !important;
     color: #fff !important;
+}
+
+/* Enhanced table headers */
+.os-wrap table.wp-list-table thead th {
+    font-size: 0.92rem !important;
+    text-transform: none !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    padding: 14px 12px !important;
+    color: #ffffff !important;
+}
+
+.os-wrap table.wp-list-table thead th.sortable:hover {
+    background-color: #0b5ed7 !important;
+}
+
+/* Footer & Pagination adjustments */
+.os-pagination-container {
+    background: #f1f5f9 !important; /* Darker modern grey footer */
+    border: 1px solid #cbd5e1 !important;
+    border-top: none !important;
+    margin-top: 0 !important;
+    border-radius: 0 0 var(--os-radius) var(--os-radius) !important;
+    padding: 14px 20px !important;
+}
+
+/* Style and resize the "Show X entries" dropdown */
+.os-per-page-select-wrap select {
+    width: 75px !important;
+    max-width: 75px !important;
+    min-width: 75px !important;
+    height: 34px !important;
+    padding: 2px 24px 2px 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    box-sizing: border-box !important;
+}
+
+.os-per-page-select-wrap, .os-pagination-info {
+    font-weight: 500 !important;
+    color: #334155 !important;
+    font-size: 0.875rem !important;
+}
+
+.os-pagination-controls {
+    gap: 6px !important;
+}
+
+.os-pagination-btn {
+    min-width: 34px !important;
+    height: 34px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+    background-color: #ffffff !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+.os-pagination-btn:hover:not(:disabled) {
+    background-color: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+.os-pagination-btn.active {
+    background-color: var(--os-primary) !important;
+    border-color: var(--os-primary) !important;
+    color: #ffffff !important;
 }
 </style>

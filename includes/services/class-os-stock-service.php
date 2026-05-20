@@ -805,13 +805,15 @@ class OS_Stock_Service {
 
         // Truncate or delete from all transaction/history tables
         $tables_to_clear = array(
+            "{$wpdb->prefix}os_stock",
             "{$wpdb->prefix}os_stock_movements",
             "{$wpdb->prefix}os_assignments",
             "{$wpdb->prefix}os_assignment_returns",
             "{$wpdb->prefix}os_transfers",
             "{$wpdb->prefix}os_inventory_counts",
             "{$wpdb->prefix}os_inventory_count_lines",
-            "{$wpdb->prefix}os_audit_log"
+            "{$wpdb->prefix}os_audit_log",
+            "{$wpdb->prefix}os_student_uniform_sizes"
         );
 
         foreach ( $tables_to_clear as $table ) {
@@ -822,14 +824,11 @@ class OS_Stock_Service {
             }
         }
 
-        // Zero the stock quantities for all items
-        $ok = $wpdb->query( "UPDATE {$wpdb->prefix}os_stock SET quantity_on_hand = 0, quantity_reserved = 0" );
-        if ( false === $ok ) {
-            $wpdb->query( 'ROLLBACK' );
-            return new WP_Error( 'db_error', __( 'Failed to zero stock balances.', 'olama-stores' ) );
-        }
 
         $wpdb->query( 'COMMIT' );
+
+        // Clear low stock warning transient
+        delete_transient( 'os_low_stock_items' );
 
         // Log reset event
         OS_Audit_Service::log( 'system', 0, 'reset_store_data_testing', null, array( 'reset_by' => get_current_user_id() ) );

@@ -16,6 +16,15 @@ class OS_Item {
         if ( ! empty( $args['category_id'] ) ) {
             $where[] = 'i.category_id = %d'; $params[] = (int) $args['category_id'];
         }
+        if ( isset( $args['provider_id_exact'] ) && $args['provider_id_exact'] > 0 ) {
+            $where[] = 'i.provider_id = %d'; $params[] = (int) $args['provider_id_exact'];
+        }
+        // Filter by model_id stored in JSON specifications (e.g. {"model_id":"3", ...})
+        if ( ! empty( $args['model_id'] ) ) {
+            $like    = '%"model_id":"' . (int) $args['model_id'] . '"%';
+            $where[] = 'i.specifications LIKE %s';
+            $params[] = $like;
+        }
         if ( isset( $args['is_active'] ) ) {
             $where[0] = 'i.is_active = ' . ( $args['is_active'] ? '1' : '0' );
         }
@@ -39,12 +48,31 @@ class OS_Item {
         }
 
         $where_sql = implode( ' AND ', $where );
+
+        // Sorting — whitelist allowed columns
+        $allowed_orderby = array(
+            'name'            => 'i.name',
+            'sku'             => 'i.sku',
+            'category_name'   => 'c.name',
+            'unit_name'       => 'u.name',
+            'unit_price'      => 'i.unit_price',
+            'provider_name'   => 'p.company_name',
+            'min_stock_level' => 'i.min_stock_level',
+        );
+        $orderby_col = $allowed_orderby[ $args['orderby'] ?? '' ] ?? 'i.name';
+        $order_dir   = strtoupper( $args['order'] ?? 'ASC' ) === 'DESC' ? 'DESC' : 'ASC';
+
+        // Secondary sort: always group by provider after the primary column (or by name when sorting by provider)
+        $secondary_sort = ( $orderby_col === 'p.company_name' )
+            ? ', i.name ASC'
+            : ', p.company_name ASC, i.name ASC';
+
         $sql = "SELECT i.*, c.name AS category_name, u.name AS unit_name, u.symbol AS unit_symbol, p.company_name AS provider_name
                 FROM {$wpdb->prefix}os_items i
                 LEFT JOIN {$wpdb->prefix}os_categories c ON i.category_id = c.id
                 LEFT JOIN {$wpdb->prefix}os_units u ON i.unit_id = u.id
                 LEFT JOIN {$wpdb->prefix}os_providers p ON i.provider_id = p.id
-                WHERE $where_sql ORDER BY i.name ASC";
+                WHERE $where_sql ORDER BY $orderby_col $order_dir$secondary_sort";
 
         // Pagination
         if ( ! empty( $args['limit'] ) ) {
@@ -69,6 +97,15 @@ class OS_Item {
 
         if ( ! empty( $args['category_id'] ) ) {
             $where[] = 'i.category_id = %d'; $params[] = (int) $args['category_id'];
+        }
+        if ( isset( $args['provider_id_exact'] ) && $args['provider_id_exact'] > 0 ) {
+            $where[] = 'i.provider_id = %d'; $params[] = (int) $args['provider_id_exact'];
+        }
+        // Filter by model_id stored in JSON specifications
+        if ( ! empty( $args['model_id'] ) ) {
+            $like    = '%"model_id":"' . (int) $args['model_id'] . '"%';
+            $where[] = 'i.specifications LIKE %s';
+            $params[] = $like;
         }
         if ( ! empty( $args['search'] ) ) {
             $keywords = explode( ' ', sanitize_text_field( $args['search'] ) );

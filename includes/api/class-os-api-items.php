@@ -14,6 +14,12 @@ class OS_API_Items {
             array( 'methods' => 'GET',  'callback' => array( __CLASS__, 'get_items' ),  'permission_callback' => array( __CLASS__, 'can_view' ) ),
             array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'create_item'), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
         ) );
+        register_rest_route( self::NS, '/items/copy-provider', array(
+            array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'copy_provider_items' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
+        register_rest_route( self::NS, '/items/delete-by-provider', array(
+            array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'delete_provider_items' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
+        ) );
         register_rest_route( self::NS, '/items/(?P<id>\d+)', array(
             array( 'methods' => 'GET',    'callback' => array( __CLASS__, 'get_item' ),    'permission_callback' => array( __CLASS__, 'can_view' ) ),
             array( 'methods' => 'PUT',    'callback' => array( __CLASS__, 'update_item' ), 'permission_callback' => array( __CLASS__, 'can_manage' ) ),
@@ -93,14 +99,23 @@ class OS_API_Items {
         $page     = (int) $request->get_param( 'page' );
         $is_custom = $request->get_param( 'is_custom' );
 
+        $provider_id_exact = $request->get_param( 'provider_id_exact' );
+        $model_id_param    = $request->get_param( 'model_id' );
+
         $args = array(
-            'category_id'     => (int) $request->get_param( 'category_id' ),
-            'search'          => sanitize_text_field( $request->get_param( 'search' ) ),
+            'category_id'      => (int) $request->get_param( 'category_id' ),
+            'search'           => sanitize_text_field( $request->get_param( 'search' ) ),
             // Correction #1: academic_year_id as INT
-            'academic_year_id'=> (int) $request->get_param( 'academic_year_id' ),
-            'is_active'       => $request->get_param( 'is_active' ) !== null ? (bool) $request->get_param( 'is_active' ) : true,
+            'academic_year_id' => (int) $request->get_param( 'academic_year_id' ),
+            'is_active'        => $request->get_param( 'is_active' ) !== null ? (bool) $request->get_param( 'is_active' ) : true,
             // Filter: only items belonging to the custom warehouse (have model_id in specs)
-            'is_custom'       => ( $is_custom !== null && $is_custom !== '' && $is_custom !== '0' && $is_custom !== false ),
+            'is_custom'        => ( $is_custom !== null && $is_custom !== '' && $is_custom !== '0' && $is_custom !== false ),
+            'orderby'          => sanitize_key( (string) $request->get_param( 'orderby' ) ),
+            'order'            => sanitize_key( (string) $request->get_param( 'order' ) ),
+            // Filter by a specific provider (exact match — used by Copy Provider Items preview)
+            'provider_id_exact'=> $provider_id_exact !== null && $provider_id_exact !== '' ? (int) $provider_id_exact : null,
+            // Filter by model_id in specifications JSON (used by Copy Provider Items model filter)
+            'model_id'         => $model_id_param !== null && $model_id_param !== '' ? (int) $model_id_param : null,
         );
 
         if ( $per_page > 0 ) {
@@ -141,7 +156,148 @@ class OS_API_Items {
         return rest_ensure_response( array( 'deleted' => true ) );
     }
 
+    /**
+     * Copy all items from one provider to another.
+     * Each item gets a brand-new auto-generated SKU; the original item stays untouched.
+     * The source provider's name is replaced with the target provider's name in item names.
+     */
+    public static function copy_provider_items( $request ) {
+        global $wpdb;
+
+        $params         = $request->get_json_params();
+        $from_id        = (int) ( $params['from_provider_id'] ?? 0 );
+        $to_id          = (int) ( $params['to_provider_id']   ?? 0 );
+        $model_id       = isset( $params['model_id'] ) && $params['model_id'] > 0 ? (int) $params['model_id'] : null;
+
+        if ( ! $from_id || ! $to_id ) {
+            return new WP_Error( 'missing_params', __( 'Both from_provider_id and to_provider_id are required.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+        if ( $from_id === $to_id ) {
+            return new WP_Error( 'same_provider', __( 'Source and destination providers must be different.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+
+        // Fetch provider names for the name-substitution logic
+        $from_provider = $wpdb->get_row( $wpdb->prepare(
+            "SELECT company_name FROM {$wpdb->prefix}os_providers WHERE id = %d", $from_id
+        ) );
+        $to_provider   = $wpdb->get_row( $wpdb->prepare(
+            "SELECT company_name FROM {$wpdb->prefix}os_providers WHERE id = %d", $to_id
+        ) );
+
+        $from_name = $from_provider ? trim( $from_provider->company_name ) : '';
+        $to_name   = $to_provider   ? trim( $to_provider->company_name )   : '';
+
+        // Fetch all active items of the source provider (no pagination = all rows)
+        $source_args = array( 'provider_id_exact' => $from_id );
+        if ( $model_id ) {
+            $source_args['model_id'] = $model_id;
+        }
+        $source_items = OS_Item::get_list( $source_args );
+
+        if ( empty( $source_items ) ) {
+            return new WP_Error( 'no_items', __( 'No items found matching the selected criteria.', 'olama-stores' ), array( 'status' => 404 ) );
+        }
+
+        $copied = 0;
+        $errors = array();
+
+        foreach ( $source_items as $item ) {
+            // Replace source provider name with target provider name in both name fields
+            $new_name    = $item->name;
+            $new_name_ar = $item->name_ar ?? '';
+            if ( $from_name !== '' && $to_name !== '' ) {
+                $new_name    = str_ireplace( $from_name, $to_name, $new_name );
+                $new_name_ar = str_ireplace( $from_name, $to_name, $new_name_ar );
+            }
+
+            $payload = array(
+                'sku'             => '',          // auto-generate a new unique SKU
+                'name'            => $new_name,
+                'name_ar'         => $new_name_ar,
+                'category_id'     => $item->category_id,
+                'unit_id'         => $item->unit_id,
+                'description'     => $item->description ?? '',
+                'specifications'  => is_array( $item->specifications ) ? $item->specifications : array(),
+                'min_stock_level' => (int) $item->min_stock_level,
+                'barcode'         => '',          // blank barcode to avoid duplicate barcode errors
+                'unit_price'      => (float) $item->unit_price,
+                'provider_id'     => $to_id,      // KEY: new provider
+                'is_active'       => 1,
+                'academic_year_id'=> $item->academic_year_id ?? null,
+                'base_item_id'    => $item->id,   // track origin
+            );
+
+            $result = OS_Item::create( $payload );
+            if ( is_wp_error( $result ) ) {
+                $errors[] = $item->name . ': ' . $result->get_error_message();
+            } else {
+                $copied++;
+            }
+        }
+
+        return rest_ensure_response( array(
+            'copied' => $copied,
+            'errors' => $errors,
+        ) );
+    }
+
+    /**
+     * Delete (soft-delete) items belonging to a provider, with optional model filter.
+     * Items that have any stock on hand (quantity_on_hand > 0 in any warehouse) are skipped.
+     */
+    public static function delete_provider_items( $request ) {
+        global $wpdb;
+
+        $params      = $request->get_json_params();
+        $provider_id = (int) ( $params['provider_id'] ?? 0 );
+        $model_id    = isset( $params['model_id'] ) && $params['model_id'] > 0 ? (int) $params['model_id'] : null;
+
+        if ( ! $provider_id ) {
+            return new WP_Error( 'missing_params', __( 'provider_id is required.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+
+        // Fetch all active items matching the filter (no pagination)
+        $source_args = array( 'provider_id_exact' => $provider_id );
+        if ( $model_id ) {
+            $source_args['model_id'] = $model_id;
+        }
+        $items = OS_Item::get_list( $source_args );
+
+        if ( empty( $items ) ) {
+            return new WP_Error( 'no_items', __( 'No items found matching the selected criteria.', 'olama-stores' ), array( 'status' => 404 ) );
+        }
+
+        $deleted = 0;
+        $skipped = array(); // names of items with stock > 0
+
+        foreach ( $items as $item ) {
+            // Check total stock across all warehouses
+            $total_stock = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COALESCE(SUM(quantity_on_hand), 0) FROM {$wpdb->prefix}os_stock WHERE item_id = %d",
+                $item->id
+            ) );
+
+            if ( $total_stock > 0 ) {
+                $skipped[] = $item->name . ' (' . sprintf(
+                    /* translators: %d = stock quantity */
+                    __( 'stock: %d', 'olama-stores' ),
+                    $total_stock
+                ) . ')';
+                continue;
+            }
+
+            OS_Item::delete( $item->id );
+            $deleted++;
+        }
+
+        return rest_ensure_response( array(
+            'deleted' => $deleted,
+            'skipped' => $skipped,
+        ) );
+    }
+
     // ── Categories ────────────────────────────────────────────────────────────
+
     public static function get_categories() {
         global $wpdb;
         return rest_ensure_response( $wpdb->get_results(

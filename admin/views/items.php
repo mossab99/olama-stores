@@ -7,6 +7,14 @@
             <a href="#" id="os-btn-add-item" class="page-title-action"><?php esc_html_e( 'Add Item', 'olama-stores' ); ?></a>
             <a href="#" id="os-btn-add-custom" class="page-title-action" style="background-color: #e74c3c; border-color: #c0392b; color: #fff;"><?php esc_html_e( 'Add School Custom', 'olama-stores' ); ?></a>
             <a href="#" id="os-btn-add-books" class="page-title-action" style="background-color: #27ae60; border-color: #219150; color: #fff;"><?php esc_html_e( 'Add Grade Books', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-copy-provider" class="page-title-action" style="background-color: #8e44ad; border-color: #7d3c98; color: #fff;">
+                <span class="dashicons dashicons-controls-repeat" style="font-size:14px;width:14px;height:14px;vertical-align:middle;margin-right:3px;"></span>
+                <?php esc_html_e( 'Copy Provider Items', 'olama-stores' ); ?>
+            </a>
+            <a href="#" id="os-btn-delete-provider" class="page-title-action" style="background-color: #c0392b; border-color: #96281b; color: #fff;">
+                <span class="dashicons dashicons-trash" style="font-size:14px;width:14px;height:14px;vertical-align:middle;margin-right:3px;"></span>
+                <?php esc_html_e( 'Delete Provider Items', 'olama-stores' ); ?>
+            </a>
         <?php endif; ?>
     </h1>
 
@@ -192,10 +200,105 @@
     </div>
 
 
+    <!-- Copy Provider Items Modal -->
+    <div id="os-copy-provider-modal" class="os-modal" style="display:none;">
+        <div class="os-modal-content" style="max-width:520px;">
+            <h2>
+                <span class="dashicons dashicons-controls-repeat" style="color:#8e44ad;font-size:24px;vertical-align:middle;margin-right:8px;"></span>
+                <?php esc_html_e( 'Copy Provider Items', 'olama-stores' ); ?>
+            </h2>
+
+            <div style="background:#f0ebf8;border-left:4px solid #8e44ad;padding:12px 16px;border-radius:6px;margin-bottom:20px;color:#4a235a;font-size:0.9em;">
+                <?php esc_html_e( 'This will duplicate items from the source provider and assign them to the target provider. You can filter by model or copy all items. New SKUs will be auto-generated. Original items are not modified.', 'olama-stores' ); ?>
+            </div>
+
+            <div class="os-form-row">
+                <label style="font-weight:600;"><?php esc_html_e( 'Copy FROM (Source Provider)', 'olama-stores' ); ?> *</label>
+                <select id="os-copy-from-provider" required style="border-color:#8e44ad;">
+                    <option value=""><?php esc_html_e( 'Select source provider…', 'olama-stores' ); ?></option>
+                </select>
+            </div>
+
+            <div class="os-form-row">
+                <label style="font-weight:600;"><?php esc_html_e( 'Filter by Model (School Custom)', 'olama-stores' ); ?></label>
+                <select id="os-copy-model-filter" style="border-color:#8e44ad;">
+                    <option value=""><?php esc_html_e( '— All Items (no model filter) —', 'olama-stores' ); ?></option>
+                </select>
+                <p style="margin:4px 0 0;font-size:0.82em;color:#6c3483;"><?php esc_html_e( 'Leave as "All Items" to copy every item from the selected provider.', 'olama-stores' ); ?></p>
+            </div>
+
+            <div id="os-copy-provider-preview" style="display:none;margin:4px 0 16px;padding:10px 14px;background:#fdfbff;border:1px solid #d5b8f0;border-radius:6px;font-size:0.9em;color:#4a235a;">
+                <span class="dashicons dashicons-info" style="vertical-align:middle;margin-right:4px;"></span>
+                <span id="os-copy-preview-text"></span>
+            </div>
+
+            <div class="os-form-row">
+                <label style="font-weight:600;"><?php esc_html_e( 'Copy TO (Target Provider)', 'olama-stores' ); ?> *</label>
+                <select id="os-copy-to-provider" required style="border-color:#8e44ad;">
+                    <option value=""><?php esc_html_e( 'Select target provider…', 'olama-stores' ); ?></option>
+                </select>
+            </div>
+
+            <div class="os-form-actions" style="margin-top:24px;">
+                <button type="button" class="button button-primary" id="os-copy-provider-submit"
+                    style="background-color:#8e44ad;border-color:#7d3c98;height:40px;font-size:1em;font-weight:600;padding:0 20px;">
+                    <span class="dashicons dashicons-controls-repeat" style="font-size:16px;width:16px;height:16px;vertical-align:middle;margin-right:4px;"></span>
+                    <?php esc_html_e( 'Copy Items', 'olama-stores' ); ?>
+                </button>
+                <button type="button" class="button os-modal-close"><?php esc_html_e( 'Cancel', 'olama-stores' ); ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Provider Items Modal -->
+    <div id="os-delete-provider-modal" class="os-modal" style="display:none;">
+        <div class="os-modal-content" style="max-width:520px;">
+            <h2>
+                <span class="dashicons dashicons-trash" style="color:#c0392b;font-size:24px;vertical-align:middle;margin-right:8px;"></span>
+                <?php esc_html_e( 'Delete Provider Items', 'olama-stores' ); ?>
+            </h2>
+
+            <div style="background:#fdf2f0;border-left:4px solid #c0392b;padding:12px 16px;border-radius:6px;margin-bottom:20px;color:#7b241c;font-size:0.9em;">
+                <strong><?php esc_html_e( 'Warning:', 'olama-stores' ); ?></strong>
+                <?php esc_html_e( 'This will permanently deactivate (soft-delete) items from the selected provider. Items with stock > 0 will be skipped and reported. This action cannot be undone.', 'olama-stores' ); ?>
+            </div>
+
+            <div class="os-form-row">
+                <label style="font-weight:600;"><?php esc_html_e( 'Provider', 'olama-stores' ); ?> *</label>
+                <select id="os-del-provider" required style="border-color:#c0392b;">
+                    <option value=""><?php esc_html_e( 'Select provider…', 'olama-stores' ); ?></option>
+                </select>
+            </div>
+
+            <div class="os-form-row">
+                <label style="font-weight:600;"><?php esc_html_e( 'Filter by Model (School Custom)', 'olama-stores' ); ?></label>
+                <select id="os-del-model-filter" style="border-color:#c0392b;">
+                    <option value=""><?php esc_html_e( '— All Items (no model filter) —', 'olama-stores' ); ?></option>
+                </select>
+                <p style="margin:4px 0 0;font-size:0.82em;color:#96281b;"><?php esc_html_e( 'Leave as "All Items" to target every item from the selected provider.', 'olama-stores' ); ?></p>
+            </div>
+
+            <div id="os-del-provider-preview" style="display:none;margin:4px 0 16px;padding:10px 14px;background:#fff8f7;border:1px solid #e6b0aa;border-radius:6px;font-size:0.9em;color:#7b241c;">
+                <span class="dashicons dashicons-info" style="vertical-align:middle;margin-right:4px;"></span>
+                <span id="os-del-preview-text"></span>
+            </div>
+
+            <div class="os-form-actions" style="margin-top:24px;">
+                <button type="button" class="button" id="os-delete-provider-submit"
+                    style="background-color:#c0392b;border-color:#96281b;color:#fff;height:40px;font-size:1em;font-weight:600;padding:0 20px;">
+                    <span class="dashicons dashicons-trash" style="font-size:16px;width:16px;height:16px;vertical-align:middle;margin-right:4px;"></span>
+                    <?php esc_html_e( 'Delete Items', 'olama-stores' ); ?>
+                </button>
+                <button type="button" class="button os-modal-close"><?php esc_html_e( 'Cancel', 'olama-stores' ); ?></button>
+            </div>
+        </div>
+    </div>
+
 </div>
 <script>
 (function($){
     var currentPage = 1, perPage = 20;
+    var currentOrderby = 'name', currentOrder = 'ASC';
     var categories = [], units = [];
 
     // Load categories & units
@@ -254,8 +357,12 @@
 
     function loadItems(search, categoryId, page){
         currentPage = page || 1;
-        var params = '?academic_year_id=' + (olamaStores.activeYearId || '') + '&per_page=' + perPage + '&page=' + currentPage;
-        if(search)     params += '&search=' + encodeURIComponent(search);
+        var params = '?academic_year_id=' + (olamaStores.activeYearId || '')
+            + '&per_page=' + perPage
+            + '&page='     + currentPage
+            + '&orderby='  + encodeURIComponent(currentOrderby)
+            + '&order='    + encodeURIComponent(currentOrder);
+        if(search)     params += '&search='      + encodeURIComponent(search);
         if(categoryId) params += '&category_id=' + categoryId;
         
         $('#os-items-table-wrap').html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
@@ -289,19 +396,28 @@
 
     function renderItems(items){
         if(!items.length){ $('#os-items-table-wrap').html('<p><?php esc_html_e("No items found.","olama-stores");?></p>'); return; }
+
+        var getHdrCls = function(col) {
+            var cls = 'sortable';
+            if (currentOrderby === col) cls += ' sorted ' + currentOrder.toLowerCase();
+            return cls;
+        };
+
         var html = '<table class="wp-list-table widefat striped"><thead><tr>'
-            + '<th>SKU</th><th><?php esc_html_e("Name","olama-stores");?></th>'
-            + '<th><?php esc_html_e("Category","olama-stores");?></th>'
-            + '<th><?php esc_html_e("Unit","olama-stores");?></th>'
-            + '<th><?php esc_html_e("Price","olama-stores");?></th>'
-            + '<th><?php esc_html_e("Provider","olama-stores");?></th>'
-            + '<th><?php esc_html_e("Min Stock","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('sku')+'" data-orderby="sku"><?php esc_html_e("SKU","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('name')+'" data-orderby="name"><?php esc_html_e("Name","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('category_name')+'" data-orderby="category_name"><?php esc_html_e("Category","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('unit_name')+'" data-orderby="unit_name"><?php esc_html_e("Unit","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('unit_price')+'" data-orderby="unit_price"><?php esc_html_e("Price","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('provider_name')+'" data-orderby="provider_name"><?php esc_html_e("Provider","olama-stores");?></th>'
+            + '<th class="'+getHdrCls('min_stock_level')+'" data-orderby="min_stock_level"><?php esc_html_e("Min Stock","olama-stores");?></th>'
             + '<th><?php esc_html_e("Actions","olama-stores");?></th>'
             + '</tr></thead><tbody>';
         items.forEach(function(item){
             html += '<tr id="os-item-row-'+item.id+'">'
                 + '<td><code>'+item.sku+'</code></td>'
-                + '<td><strong>'+item.name+'</strong>'+(item.name_ar?'<br><small dir="rtl">'+item.name_ar+'</small>':'')+'</td>'
+                + '<td><strong>'+item.name+'</strong>'+(item.name_ar?'<br><small dir="rtl">'+item.name_ar+'</small>':'')+
+                  '</td>'
                 + '<td>'+(item.category_name||'—')+'</td>'
                 + '<td>'+(item.unit_symbol?item.unit_name+' ('+item.unit_symbol+')':item.unit_name||'—')+'</td>'
                 + '<td>'+(parseFloat(item.unit_price).toFixed(2))+'</td>'
@@ -316,28 +432,110 @@
             html += '</td></tr>';
         });
         html += '</tbody></table>';
-        html += '<div id="os-items-pagination" class="tablenav-pages"></div>';
+        html += '<div id="os-items-pagination"></div>';
         $('#os-items-table-wrap').html(html);
     }
 
     function renderPagination(total, totalPages){
-        if(totalPages <= 1) return;
-        var html = '<span class="displaying-num">' + total + ' <?php esc_html_e("items","olama-stores");?></span>';
-        html += '<span class="pagination-links">';
-        if(currentPage > 1) {
-            html += '<a class="prev-page button" href="#" data-page="'+(currentPage-1)+'"><span class="screen-reader-text">Previous page</span><span aria-hidden="true">‹</span></a>';
+        total      = parseInt(total)      || 0;
+        totalPages = parseInt(totalPages) || 1;
+
+        var startEntry = (currentPage - 1) * perPage + 1;
+        var endEntry   = Math.min(currentPage * perPage, total);
+        if (total === 0) { startEntry = 0; endEntry = 0; }
+
+        var html = '<div class="os-pagination-container">';
+
+        // Left: per-page selector
+        html += '<div class="os-per-page-select-wrap">'
+            + '<span><?php esc_html_e("Show","olama-stores");?></span>'
+            + '<select id="os-items-per-page-select">'
+            + '<option value="10"'+(perPage===10?' selected':'')+'>10</option>'
+            + '<option value="20"'+(perPage===20?' selected':'')+'>20</option>'
+            + '<option value="50"'+(perPage===50?' selected':'')+'>50</option>'
+            + '<option value="100"'+(perPage===100?' selected':'')+'>100</option>'
+            + '</select>'
+            + '<span><?php esc_html_e("entries","olama-stores");?></span>'
+            + '</div>';
+
+        // Centre: summary
+        html += '<div class="os-pagination-info">'
+            + '<?php esc_html_e("Showing","olama-stores");?> ' + startEntry
+            + ' <?php esc_html_e("to","olama-stores");?> '     + endEntry
+            + ' <?php esc_html_e("of","olama-stores");?> '     + total
+            + ' <?php esc_html_e("entries","olama-stores");?>'
+            + '</div>';
+
+        // Right: page buttons
+        html += '<div class="os-pagination-controls">';
+
+        var prevDisabled = currentPage === 1 ? 'disabled' : '';
+        html += '<button type="button" class="os-pagination-btn os-items-pag-btn" id="os-items-pag-prev" '+prevDisabled+'>&laquo;</button>';
+
+        // 5-page sliding window
+        var maxButtons = 5;
+        var startPage  = 1;
+        var endPage    = totalPages;
+
+        if (totalPages > maxButtons) {
+            var half = Math.floor(maxButtons / 2);
+            startPage = currentPage - half;
+            endPage   = currentPage + half;
+            if (startPage < 1)           { endPage = maxButtons;             startPage = 1; }
+            else if (endPage > totalPages){ startPage = totalPages - maxButtons + 1; endPage = totalPages; }
         }
-        html += '<span class="paging-input"><span class="total-pages">'+currentPage+'</span> of <span class="total-pages">'+totalPages+'</span></span>';
-        if(currentPage < totalPages) {
-            html += '<a class="next-page button" href="#" data-page="'+(parseInt(currentPage)+1)+'"><span class="screen-reader-text">Next page</span><span aria-hidden="true">›</span></a>';
+
+        if (startPage > 1) {
+            html += '<button type="button" class="os-pagination-btn os-items-pag-btn" data-page="1">1</button>';
+            if (startPage > 2) { html += '<span style="padding:0 4px;color:var(--os-text-muted)">...</span>'; }
         }
-        html += '</span>';
+
+        for (var p = startPage; p <= endPage; p++) {
+            var actCls = currentPage === p ? ' active' : '';
+            html += '<button type="button" class="os-pagination-btn os-items-pag-btn'+actCls+'" data-page="'+p+'">'+p+'</button>';
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) { html += '<span style="padding:0 4px;color:var(--os-text-muted)">...</span>'; }
+            html += '<button type="button" class="os-pagination-btn os-items-pag-btn" data-page="'+totalPages+'">'+totalPages+'</button>';
+        }
+
+        var nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+        html += '<button type="button" class="os-pagination-btn os-items-pag-btn" id="os-items-pag-next" '+nextDisabled+'>&raquo;</button>';
+
+        html += '</div></div>'; // close controls + container
         $('#os-items-pagination').html(html);
     }
 
-    $(document).on('click', '#os-items-pagination a', function(e){
-        e.preventDefault();
-        loadItems($('#os-search-items').val(), $('#os-filter-category').val(), $(this).data('page'));
+    // Numbered page click
+    $(document).on('click', '#os-items-table-wrap .os-items-pag-btn[data-page]', function(){
+        loadItems($('#os-search-items').val(), $('#os-filter-category').val(), parseInt($(this).data('page')));
+    });
+
+    // Prev / Next clicks
+    $(document).on('click', '#os-items-table-wrap #os-items-pag-prev', function(){
+        if (currentPage > 1) loadItems($('#os-search-items').val(), $('#os-filter-category').val(), currentPage - 1);
+    });
+    $(document).on('click', '#os-items-table-wrap #os-items-pag-next', function(){
+        loadItems($('#os-search-items').val(), $('#os-filter-category').val(), currentPage + 1);
+    });
+
+    // Per-page change
+    $(document).on('change', '#os-items-table-wrap #os-items-per-page-select', function(){
+        perPage = parseInt($(this).val());
+        loadItems($('#os-search-items').val(), $('#os-filter-category').val(), 1);
+    });
+
+    // Sort by column header click
+    $(document).on('click', '#os-items-table-wrap th.sortable', function() {
+        var col = $(this).data('orderby');
+        if (currentOrderby === col) {
+            currentOrder = currentOrder === 'ASC' ? 'DESC' : 'ASC';
+        } else {
+            currentOrderby = col;
+            currentOrder = 'ASC';
+        }
+        loadItems($('#os-search-items').val(), $('#os-filter-category').val(), 1);
     });
 
     // Filters
@@ -582,14 +780,325 @@
 
 
 
+    // ── Copy Provider Items ───────────────────────────────────────────────────
+
+    // Open copy modal and populate provider + model dropdowns
+    $('#os-btn-copy-provider').on('click', function(e){
+        e.preventDefault();
+        $('#os-copy-from-provider').val('');
+        $('#os-copy-to-provider').val('');
+        $('#os-copy-model-filter').val('');
+        $('#os-copy-provider-preview').hide();
+        $('#os-copy-preview-text').text('');
+
+        Promise.all([
+            wp.apiFetch({ path: '/olama-stores/v1/providers' }),
+            wp.apiFetch({ path: '/olama-stores/v1/custom-models' })
+        ]).then(function(results){
+            var providers = results[0];
+            var models    = results[1];
+
+            var opts = '<option value=""><?php esc_html_e( 'Select source provider…', 'olama-stores' ); ?></option>';
+            providers.forEach(function(p){ opts += '<option value="'+p.id+'">'+p.company_name+'</option>'; });
+            $('#os-copy-from-provider').html(opts);
+
+            var optsTo = '<option value=""><?php esc_html_e( 'Select target provider…', 'olama-stores' ); ?></option>';
+            providers.forEach(function(p){ optsTo += '<option value="'+p.id+'">'+p.company_name+'</option>'; });
+            $('#os-copy-to-provider').html(optsTo);
+
+            var modelOpts = '<option value=""><?php esc_html_e( '— All Items (no model filter) —', 'olama-stores' ); ?></option>';
+            models.forEach(function(m){ modelOpts += '<option value="'+m.id+'">'+m.name+'</option>'; });
+            $('#os-copy-model-filter').html(modelOpts);
+
+            $('#os-copy-provider-modal').show();
+        });
+    });
+
+    // Helper: refresh the preview count based on current from-provider + model filter
+    function refreshCopyPreview() {
+        var fromId  = $('#os-copy-from-provider').val();
+        var modelId = $('#os-copy-model-filter').val();
+        if (!fromId) {
+            $('#os-copy-provider-preview').hide();
+            return;
+        }
+        $('#os-copy-preview-text').text('<?php esc_html_e( 'Loading…', 'olama-stores' ); ?>');
+        $('#os-copy-provider-preview').show();
+
+        var path = '/olama-stores/v1/items?provider_id_exact=' + fromId + '&per_page=1&page=1';
+        if (modelId) { path += '&model_id=' + modelId; }
+
+        wp.apiFetch({ path: path, parse: false })
+            .then(function(response){
+                var total    = parseInt(response.headers.get('X-WP-Total')) || 0;
+                var fromName = $('#os-copy-from-provider option:selected').text();
+                var modelName= modelId ? (' — ' + $('#os-copy-model-filter option:selected').text()) : '';
+                $('#os-copy-preview-text').text(
+                    total + ' <?php esc_html_e( 'item(s) will be copied from', 'olama-stores' ); ?> ' + fromName + modelName
+                );
+            }).catch(function(){
+                $('#os-copy-preview-text').text('<?php esc_html_e( 'Could not load preview.', 'olama-stores' ); ?>');
+            });
+    }
+
+    // Re-run preview whenever source provider OR model filter changes
+    $(document).on('change', '#os-copy-from-provider, #os-copy-model-filter', function(){
+        refreshCopyPreview();
+    });
+
+    // Submit copy
+    $('#os-copy-provider-submit').on('click', function(){
+        var fromId  = $('#os-copy-from-provider').val();
+        var toId    = $('#os-copy-to-provider').val();
+        var modelId = $('#os-copy-model-filter').val();
+        var modelName = modelId ? $('#os-copy-model-filter option:selected').text() : '';
+
+        if (!fromId || !toId) {
+            alert('<?php esc_html_e( 'Please select both a source and a target provider.', 'olama-stores' ); ?>');
+            return;
+        }
+        if (fromId === toId) {
+            alert('<?php esc_html_e( 'Source and target providers must be different.', 'olama-stores' ); ?>');
+            return;
+        }
+
+        var scope = modelName
+            ? '<?php esc_html_e( 'model', 'olama-stores' ); ?> "' + modelName + '"'
+            : '<?php esc_html_e( 'all items', 'olama-stores' ); ?>';
+        if (!confirm('<?php esc_html_e( 'This will copy', 'olama-stores' ); ?> ' + scope + ' <?php esc_html_e( 'from the source provider to the target. Continue?', 'olama-stores' ); ?>')) {
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('<?php esc_html_e( 'Copying…', 'olama-stores' ); ?>');
+
+        var payload = { from_provider_id: parseInt(fromId), to_provider_id: parseInt(toId) };
+        if (modelId) { payload.model_id = parseInt(modelId); }
+
+        wp.apiFetch({
+            path:   '/olama-stores/v1/items/copy-provider',
+            method: 'POST',
+            data:   payload
+        }).then(function(result){
+            $('#os-copy-provider-modal').hide();
+            var msg = result.copied + ' <?php esc_html_e( 'item(s) copied successfully.', 'olama-stores' ); ?>';
+            if (result.errors && result.errors.length) {
+                msg += '\n<?php esc_html_e( 'Errors:', 'olama-stores' ); ?> ' + result.errors.join(', ');
+            }
+            alert(msg);
+            loadItems($('#os-search-items').val(), $('#os-filter-category').val(), 1);
+        }).catch(function(err){
+            alert(err.message || '<?php esc_html_e( 'Error copying items.', 'olama-stores' ); ?>');
+        }).finally(function(){
+            $btn.prop('disabled', false).html(
+                '<span class="dashicons dashicons-controls-repeat" style="font-size:16px;width:16px;height:16px;vertical-align:middle;margin-right:4px;"></span><?php esc_html_e( 'Copy Items', 'olama-stores' ); ?>'
+            );
+        });
+    });
+
+    // ── Delete Provider Items ─────────────────────────────────────────────────
+
+    // Open delete modal and populate provider + model dropdowns
+    $('#os-btn-delete-provider').on('click', function(e){
+        e.preventDefault();
+        $('#os-del-provider').val('');
+        $('#os-del-model-filter').val('');
+        $('#os-del-provider-preview').hide();
+        $('#os-del-preview-text').text('');
+
+        Promise.all([
+            wp.apiFetch({ path: '/olama-stores/v1/providers' }),
+            wp.apiFetch({ path: '/olama-stores/v1/custom-models' })
+        ]).then(function(results){
+            var providers = results[0];
+            var models    = results[1];
+
+            var opts = '<option value=""><?php esc_html_e( 'Select provider\u2026', 'olama-stores' ); ?></option>';
+            providers.forEach(function(p){ opts += '<option value="'+p.id+'">'+p.company_name+'</option>'; });
+            $('#os-del-provider').html(opts);
+
+            var modelOpts = '<option value=""><?php esc_html_e( '\u2014 All Items (no model filter) \u2014', 'olama-stores' ); ?></option>';
+            models.forEach(function(m){ modelOpts += '<option value="'+m.id+'">'+m.name+'</option>'; });
+            $('#os-del-model-filter').html(modelOpts);
+
+            $('#os-delete-provider-modal').show();
+        });
+    });
+
+    // Helper: refresh the delete preview count
+    function refreshDeletePreview() {
+        var providerId = $('#os-del-provider').val();
+        var modelId    = $('#os-del-model-filter').val();
+        if (!providerId) {
+            $('#os-del-provider-preview').hide();
+            return;
+        }
+        $('#os-del-preview-text').text('<?php esc_html_e( 'Loading\u2026', 'olama-stores' ); ?>');
+        $('#os-del-provider-preview').show();
+
+        var path = '/olama-stores/v1/items?provider_id_exact=' + providerId + '&per_page=1&page=1';
+        if (modelId) { path += '&model_id=' + modelId; }
+
+        wp.apiFetch({ path: path, parse: false })
+            .then(function(response){
+                var total      = parseInt(response.headers.get('X-WP-Total')) || 0;
+                var modelName  = modelId ? (' \u2014 ' + $('#os-del-model-filter option:selected').text()) : '';
+                var provName   = $('#os-del-provider option:selected').text();
+                $('#os-del-preview-text').html(
+                    '<strong>' + total + '</strong> <?php esc_html_e( 'item(s) found for', 'olama-stores' ); ?> ' + provName + modelName
+                    + '<br><small style="color:#96281b;"><?php esc_html_e( 'Items with stock > 0 will be skipped automatically.', 'olama-stores' ); ?></small>'
+                );
+            }).catch(function(){
+                $('#os-del-preview-text').text('<?php esc_html_e( 'Could not load preview.', 'olama-stores' ); ?>');
+            });
+    }
+
+    $(document).on('change', '#os-del-provider, #os-del-model-filter', function(){
+        refreshDeletePreview();
+    });
+
+    // Submit delete
+    $('#os-delete-provider-submit').on('click', function(){
+        var providerId = $('#os-del-provider').val();
+        var modelId    = $('#os-del-model-filter').val();
+        var modelName  = modelId ? $('#os-del-model-filter option:selected').text() : '';
+        var provName   = $('#os-del-provider option:selected').text();
+
+        if (!providerId) {
+            alert('<?php esc_html_e( 'Please select a provider.', 'olama-stores' ); ?>');
+            return;
+        }
+
+        var scope = modelName
+            ? '<?php esc_html_e( 'model', 'olama-stores' ); ?> "' + modelName + '" <?php esc_html_e( 'from', 'olama-stores' ); ?> ' + provName
+            : '<?php esc_html_e( 'ALL items from', 'olama-stores' ); ?> ' + provName;
+
+        // Double confirm for destructive action
+        if (!confirm('<?php esc_html_e( 'Are you sure you want to delete', 'olama-stores' ); ?> ' + scope + '?\n\n<?php esc_html_e( 'Items with stock > 0 will be skipped. This cannot be undone.', 'olama-stores' ); ?>')) {
+            return;
+        }
+        if (!confirm('<?php esc_html_e( 'FINAL CONFIRMATION: Proceed with deletion?', 'olama-stores' ); ?>')) {
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('<?php esc_html_e( 'Deleting\u2026', 'olama-stores' ); ?>');
+
+        var payload = { provider_id: parseInt(providerId) };
+        if (modelId) { payload.model_id = parseInt(modelId); }
+
+        wp.apiFetch({
+            path:   '/olama-stores/v1/items/delete-by-provider',
+            method: 'POST',
+            data:   payload
+        }).then(function(result){
+            $('#os-delete-provider-modal').hide();
+            var msg = result.deleted + ' <?php esc_html_e( 'item(s) deleted successfully.', 'olama-stores' ); ?>';
+            if (result.skipped && result.skipped.length) {
+                msg += '\n\n<?php esc_html_e( 'Skipped (stock > 0):', 'olama-stores' ); ?>\n' + result.skipped.join('\n');
+            }
+            alert(msg);
+            loadItems($('#os-search-items').val(), $('#os-filter-category').val(), 1);
+        }).catch(function(err){
+            alert(err.message || '<?php esc_html_e( 'Error deleting items.', 'olama-stores' ); ?>');
+        }).finally(function(){
+            $btn.prop('disabled', false).html(
+                '<span class="dashicons dashicons-trash" style="font-size:16px;width:16px;height:16px;vertical-align:middle;margin-right:4px;"></span><?php esc_html_e( 'Delete Items', 'olama-stores' ); ?>'
+            );
+        });
+    });
+
     // Close modal
     $('.os-modal-close, .os-modal').on('click', function(e){
         if(e.target===this || $(e.target).hasClass('os-modal-close')) $(this).closest('.os-modal').hide();
     });
 
-    // Export
+
+    // Export — uses dedicated items endpoint with current filters, no per-page limit
     $('#os-btn-export-items').on('click', function(){
-        window.location = olamaStores.apiRoot + '/reports/export/stock?_wpnonce=' + olamaStores.nonce;
+        var search     = encodeURIComponent( $('#os-search-items').val() );
+        var categoryId = encodeURIComponent( $('#os-filter-category').val() );
+        var url = olamaStores.apiRoot + '/reports/export/items?_wpnonce=' + olamaStores.nonce;
+        if ( search )     url += '&search='      + search;
+        if ( categoryId ) url += '&category_id=' + categoryId;
+        window.location = url;
     });
 })(jQuery);
 </script>
+
+<style>
+/* Enhanced items table headers */
+#os-items-page .os-wrap table.wp-list-table thead th,
+#os-items-table-wrap table.wp-list-table thead th {
+    font-size: 0.92rem !important;
+    text-transform: none !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    padding: 14px 12px !important;
+    color: #ffffff !important;
+    background: var(--os-primary) !important;
+}
+
+/* Footer pagination bar */
+#os-items-table-wrap .os-pagination-container {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-top: none !important;
+    margin-top: 0 !important;
+    border-radius: 0 0 var(--os-radius) var(--os-radius) !important;
+    padding: 14px 20px !important;
+}
+
+/* Per-page dropdown */
+#os-items-table-wrap .os-per-page-select-wrap select {
+    width: 75px !important;
+    max-width: 75px !important;
+    min-width: 75px !important;
+    height: 34px !important;
+    padding: 2px 24px 2px 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    box-sizing: border-box !important;
+}
+
+#os-items-table-wrap .os-per-page-select-wrap,
+#os-items-table-wrap .os-pagination-info {
+    font-weight: 500 !important;
+    color: #334155 !important;
+    font-size: 0.875rem !important;
+}
+
+#os-items-table-wrap .os-pagination-controls {
+    gap: 6px !important;
+}
+
+#os-items-table-wrap .os-pagination-btn {
+    min-width: 34px !important;
+    height: 34px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+    background-color: #ffffff !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+#os-items-table-wrap .os-pagination-btn:hover:not(:disabled) {
+    background-color: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+#os-items-table-wrap .os-pagination-btn.active {
+    background-color: var(--os-primary) !important;
+    border-color: var(--os-primary) !important;
+    color: #ffffff !important;
+}
+</style>

@@ -134,4 +134,47 @@ class OS_Export_Service {
 
         self::export_xlsx( 'assignments-' . date( 'Y-m-d' ), $headers, $data, 'Assignments' );
     }
+
+    /**
+     * Export full item registry to Excel.
+     *
+     * @param  array $args  Filters: search, category_id.
+     */
+    public static function export_items( $args = array() ) {
+        // No pagination — fetch everything matching the filter
+        $query_args = array_filter( array(
+            'search'      => sanitize_text_field( $args['search'] ?? '' ),
+            'category_id' => (int) ( $args['category_id'] ?? 0 ),
+        ) );
+
+        $rows    = OS_Item::get_list( $query_args );  // no limit = all rows
+        $headers = array(
+            __( 'SKU',          'olama-stores' ),
+            __( 'Name',         'olama-stores' ),
+            __( 'Name (Arabic)','olama-stores' ),
+            __( 'Category',     'olama-stores' ),
+            __( 'Unit',         'olama-stores' ),
+            __( 'Unit Price',   'olama-stores' ),
+            __( 'Provider',     'olama-stores' ),
+            __( 'Min Stock',    'olama-stores' ),
+            __( 'Barcode',      'olama-stores' ),
+            __( 'Description',  'olama-stores' ),
+        );
+        $data = array_map( function ( $r ) {
+            return array(
+                $r->sku,
+                $r->name,
+                $r->name_ar ?? '',
+                $r->category_name ?? '',
+                $r->unit_name ?? '',
+                number_format( (float) $r->unit_price, 2 ),
+                $r->provider_name ?? '',
+                (int) $r->min_stock_level,
+                $r->barcode ?? '',
+                $r->description ?? '',
+            );
+        }, $rows );
+
+        self::export_xlsx( 'items-' . date( 'Y-m-d' ), $headers, $data, 'Item Registry' );
+    }
 }

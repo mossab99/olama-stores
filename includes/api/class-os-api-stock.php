@@ -22,6 +22,14 @@ class OS_API_Stock {
             'methods' => 'POST', 'callback' => array( __CLASS__, 'receive_stock' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
         ) );
+        register_rest_route( self::NS, '/stock/bulk-validate', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'bulk_validate_stock' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
+        ) );
+        register_rest_route( self::NS, '/stock/bulk-receive', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'bulk_receive_stock' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
+        ) );
         register_rest_route( self::NS, '/stock/adjust', array(
             'methods' => 'POST', 'callback' => array( __CLASS__, 'adjust_stock' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_adjust_stock' ); },
@@ -70,6 +78,160 @@ class OS_API_Stock {
         $result = OS_Stock_Service::record_receipt( $data );
         if ( is_wp_error( $result ) ) { return $result; }
         return rest_ensure_response( array( 'movement_id' => $result ), 201 );
+    }
+
+    public static function bulk_validate_stock( $request ) {
+        global $wpdb;
+        $params = $request->get_json_params();
+        $rows = isset( $params['rows'] ) && is_array( $params['rows'] ) ? $params['rows'] : array();
+        
+        $resolved = array();
+        
+        // Cache warehouses to avoid repeated queries
+        $warehouses = $wpdb->get_results( "SELECT id, name FROM {$wpdb->prefix}os_warehouses" );
+        $wh_map = array();
+        foreach ( $warehouses as $wh ) {
+            $wh_map[ strtolower( trim( $wh->name ) ) ] = (int) $wh->id;
+            $wh_map[ (string) $wh->id ] = (int) $wh->id;
+        }
+
+        foreach ( $rows as $index => $row ) {
+            $sku = isset( $row['sku'] ) ? sanitize_text_field( trim( $row['sku'] ) ) : '';
+            $qty = isset( $row['quantity'] ) ? (int) $row['quantity'] : 0;
+            $notes = isset( $row['notes'] ) ? sanitize_textarea_field( trim( $row['notes'] ) ) : '';
+            $wh_input = isset( $row['warehouse'] ) ? sanitize_text_field( trim( $row['warehouse'] ) ) : '';
+
+            $row_res = array(
+                'index'      => $index,
+                'sku'        => $sku,
+                'quantity'   => $qty,
+                'notes'      => $notes,
+                'warehouse'  => $wh_input,
+                'item_id'    => null,
+                'item_name'  => null,
+                'wh_id'      => null,
+                'wh_name'    => null,
+                'valid'      => true,
+                'error'      => '',
+            );
+
+            if ( empty( $sku ) ) {
+                $row_res['valid'] = false;
+                $row_res['error'] = __( 'SKU or Barcode is empty.', 'olama-stores' );
+                $resolved[] = $row_res;
+                continue;
+            }
+
+            if ( $qty <= 0 ) {
+                $row_res['valid'] = false;
+                $row_res['error'] = __( 'Quantity must be greater than 0.', 'olama-stores' );
+                $resolved[] = $row_res;
+                continue;
+            }
+
+            // Lookup item by SKU or Barcode
+            $item = $wpdb->get_row( $wpdb->prepare(
+                "SELECT id, name, sku, unit_id FROM {$wpdb->prefix}os_items WHERE (sku = %s OR barcode = %s) AND is_active = 1 LIMIT 1",
+                $sku, $sku
+            ) );
+
+            if ( ! $item ) {
+                $row_res['valid'] = false;
+                $row_res['error'] = sprintf( __( 'Item with SKU/Barcode "%s" not found.', 'olama-stores' ), $sku );
+                $resolved[] = $row_res;
+                continue;
+            }
+
+            $row_res['item_id']   = (int) $item->id;
+            $row_res['item_name'] = $item->name;
+            $row_res['sku']       = $item->sku; // Normalize SKU if matched by barcode
+
+            // Lookup unit symbol
+            if ( ! empty( $item->unit_id ) ) {
+                $unit_symbol = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT symbol FROM {$wpdb->prefix}os_units WHERE id = %d",
+                    $item->unit_id
+                ) );
+                $row_res['unit_symbol'] = $unit_symbol ?: '';
+            } else {
+                $row_res['unit_symbol'] = '';
+            }
+
+            // Resolve Warehouse if input
+            if ( ! empty( $wh_input ) ) {
+                $wh_key = strtolower( $wh_input );
+                if ( isset( $wh_map[ $wh_key ] ) ) {
+                    $row_res['wh_id'] = $wh_map[ $wh_key ];
+                    // Get nice name
+                    foreach ( $warehouses as $wh ) {
+                        if ( (int) $wh->id === $row_res['wh_id'] ) {
+                            $row_res['wh_name'] = $wh->name;
+                            break;
+                        }
+                    }
+                } else {
+                    $row_res['valid'] = false;
+                    $row_res['error'] = sprintf( __( 'Warehouse "%s" not found.', 'olama-stores' ), $wh_input );
+                }
+            }
+
+            $resolved[] = $row_res;
+        }
+
+        return rest_ensure_response( $resolved );
+    }
+
+    public static function bulk_receive_stock( $request ) {
+        if ( ! OS_Roles::can( 'os_receive_stock' ) ) {
+            return new WP_Error( 'unauthorized', __( 'Insufficient permissions to add items.', 'olama-stores' ), array( 'status' => 403 ) );
+        }
+
+        $params = $request->get_json_params();
+        $rows = isset( $params['rows'] ) && is_array( $params['rows'] ) ? $params['rows'] : array();
+        $default_wh_id = isset( $params['default_warehouse_id'] ) ? (int) $params['default_warehouse_id'] : 0;
+        $academic_year_id = ! empty( $params['academic_year_id'] ) ? (int) $params['academic_year_id'] : os_get_active_year_id();
+
+        if ( empty( $rows ) ) {
+            return new WP_Error( 'empty_rows', __( 'No rows to import.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+
+        $imported_count = 0;
+
+        foreach ( $rows as $index => $row ) {
+            $item_id = isset( $row['item_id'] ) ? (int) $row['item_id'] : 0;
+            $wh_id = ! empty( $row['wh_id'] ) ? (int) $row['wh_id'] : $default_wh_id;
+            $qty = isset( $row['quantity'] ) ? (int) $row['quantity'] : 0;
+            $notes = isset( $row['notes'] ) ? sanitize_textarea_field( $row['notes'] ) : '';
+
+            if ( $item_id <= 0 ) {
+                return new WP_Error( 'invalid_item', sprintf( __( 'Row %d: Invalid item ID.', 'olama-stores' ), $index + 1 ), array( 'status' => 400 ) );
+            }
+
+            if ( $wh_id <= 0 ) {
+                return new WP_Error( 'invalid_warehouse', sprintf( __( 'Row %d: Warehouse not specified.', 'olama-stores' ), $index + 1 ), array( 'status' => 400 ) );
+            }
+
+            if ( $qty <= 0 ) {
+                return new WP_Error( 'invalid_quantity', sprintf( __( 'Row %d: Quantity must be greater than 0.', 'olama-stores' ), $index + 1 ), array( 'status' => 400 ) );
+            }
+
+            $receipt_data = array(
+                'item_id'          => $item_id,
+                'warehouse_id'     => $wh_id,
+                'quantity'         => $qty,
+                'movement_type'          => 'opening_balance',
+                'notes'            => $notes,
+                'academic_year_id' => $academic_year_id,
+            );
+
+            $result = OS_Stock_Service::record_receipt( $receipt_data );
+            if ( is_wp_error( $result ) ) {
+                return $result;
+            }
+            $imported_count++;
+        }
+
+        return rest_ensure_response( array( 'success' => true, 'count' => $imported_count ) );
     }
 
     public static function adjust_stock( $request ) {

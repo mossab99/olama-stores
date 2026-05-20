@@ -34,6 +34,25 @@
             </table>
             <?php submit_button(); ?>
         </form>
+
+        <div class="os-card os-card-danger" style="margin-top: 30px; max-width: 600px; border: 1px solid var(--os-border); background: var(--os-surface); padding: 24px; box-shadow: var(--os-shadow-sm); border-radius: var(--os-radius); position: relative; overflow: hidden; transition: all 0.3s ease;">
+            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--os-danger);"></div>
+            <h3 style="color: var(--os-danger); margin-top: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.15rem;">
+                <span class="dashicons dashicons-warning" style="color: var(--os-danger); font-size: 1.3rem; width: 1.3rem; height: 1.3rem;"></span>
+                <?php esc_html_e( 'Clear Warehouse', 'olama-stores' ); ?>
+            </h3>
+            <p style="margin: 12px 0; line-height: 1.5; color: var(--os-text-muted); font-size: 0.9rem;">
+                <?php esc_html_e( 'Permanently delete all Olama store transactions completely. This action will delete stock movements, custody assignments, returns, transfers, and inventory counts. All item stock levels will be reset to zero.', 'olama-stores' ); ?>
+            </p>
+            <p style="margin: 0 0 16px 0; font-weight: 600; color: var(--os-danger); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                <span class="dashicons dashicons-shield-alt" style="font-size: 1rem; width: 1rem; height: 1rem;"></span>
+                <?php esc_html_e( 'Setting details and the items list will be completely kept.', 'olama-stores' ); ?>
+            </p>
+            <button type="button" class="button" id="os-btn-clear-warehouse" style="background: var(--os-danger); color: #fff; border-color: var(--os-danger); font-weight: 600; padding: 6px 16px; height: auto; font-size: 0.875rem; border-radius: 6px; cursor: pointer; transition: background-color 0.2s ease;">
+                <?php esc_html_e( 'Clear Warehouse', 'olama-stores' ); ?>
+            </button>
+        </div>
+
         <?php
         // Register settings (simple inline approach)
         add_action( 'admin_init', function () {
@@ -671,6 +690,35 @@
         }).catch(function(error) {
             alert('<?php echo esc_js( __("Error resetting store data: ", "olama-stores") ); ?>' + error.message);
             btn.prop('disabled', false).text('<?php echo esc_js( __("Delete All Transactions & Zero Balances", "olama-stores") ); ?>').css('background', '#d63638');
+        });
+    });
+
+    // Clear Warehouse
+    $('#os-btn-clear-warehouse').on('click', function(e){
+        e.preventDefault();
+        
+        var confirm1 = confirm('<?php echo esc_js( __("WARNING: You are about to permanently delete all transactions (movements, custody assignments, returns, transfers, and inventory counts) from the store. This action cannot be undone. Are you sure you want to proceed?", "olama-stores") ); ?>');
+        if (!confirm1) {
+            return;
+        }
+        
+        var confirm2 = confirm('<?php echo esc_js( __("FINAL WARNING: Are you absolutely sure you want to clear all transactions and zero out stock levels? (Setting details and items list will be kept).", "olama-stores") ); ?>');
+        if (!confirm2) {
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).text('<?php echo esc_js( __("Clearing warehouse...", "olama-stores") ); ?>').css('background', '#777');
+
+        wp.apiFetch({
+            path: '/olama-stores/v1/stock/reset-testing',
+            method: 'POST'
+        }).then(function(response) {
+            alert('<?php echo esc_js( __("Olama store transactions have been successfully cleared. Settings and the items list are kept, and stock levels are set to zero.", "olama-stores") ); ?>');
+            location.reload();
+        }).catch(function(error) {
+            alert('<?php echo esc_js( __("Error clearing warehouse: ", "olama-stores") ); ?>' + error.message);
+            btn.prop('disabled', false).text('<?php echo esc_js( __("Clear Warehouse", "olama-stores") ); ?>').css('background', 'var(--os-danger)');
         });
     });
 

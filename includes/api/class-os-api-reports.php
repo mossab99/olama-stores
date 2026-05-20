@@ -23,6 +23,9 @@ class OS_API_Reports {
         register_rest_route( self::NS, '/reports/export/assignments', array(
             'methods' => 'GET', 'callback' => array( __CLASS__, 'export_assignments' ), 'permission_callback' => $perm,
         ) );
+        register_rest_route( self::NS, '/reports/export/items', array(
+            'methods' => 'GET', 'callback' => array( __CLASS__, 'export_items' ), 'permission_callback' => $perm,
+        ) );
         register_rest_route( self::NS, '/reports/dashboard', array(
             'methods' => 'GET', 'callback' => array( __CLASS__, 'dashboard_kpis' ), 'permission_callback' => $perm,
         ) );
@@ -70,6 +73,14 @@ class OS_API_Reports {
             'status'           => sanitize_key( $request->get_param( 'status' ) ),
         ) );
         OS_Export_Service::export_assignments( $args );
+    }
+
+    public static function export_items( $request ) {
+        $args = array_filter( array(
+            'search'      => sanitize_text_field( (string) $request->get_param( 'search' ) ),
+            'category_id' => (int) $request->get_param( 'category_id' ),
+        ) );
+        OS_Export_Service::export_items( $args );
     }
 
     public static function dashboard_kpis() {
