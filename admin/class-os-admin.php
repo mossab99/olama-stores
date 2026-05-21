@@ -169,6 +169,11 @@ class OS_Admin
     // ── Low-stock admin notice ────────────────────────────────────────────────
     public function low_stock_notice()
     {
+        // Only show this notice on Olama Stores pages
+        if (!isset($_GET['page']) || strpos($_GET['page'], 'olama-stores') === false) {
+            return;
+        }
+
         $low = get_transient('os_low_stock_items');
         if (empty($low)) {
             return;
