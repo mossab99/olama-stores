@@ -221,7 +221,7 @@ class OS_API_Reports {
                     SUM(sm.quantity * COALESCE(i.unit_price, 0)) AS total_spend
                 FROM {$wpdb->prefix}os_stock_movements sm
                 LEFT JOIN {$wpdb->prefix}os_items i ON sm.item_id = i.id
-                LEFT JOIN {$wpdb->prefix}os_providers p ON sm.provider_id = p.id
+                LEFT JOIN {$wpdb->prefix}os_providers p ON i.provider_id = p.id
                 WHERE $where_sql
                 GROUP BY p.id
                 ORDER BY total_spend DESC";
