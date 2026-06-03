@@ -339,6 +339,22 @@ class OS_Activator {
             KEY idx_created_at (created_at)
         ) $col;";
 
+        // ── os_entitlements ──────────────────────────────────────────────────
+        $tables[] = "CREATE TABLE {$p}os_entitlements (
+            id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            academic_year_id INT UNSIGNED NOT NULL,
+            grade_id         INT UNSIGNED NOT NULL,
+            custom_model_id  INT UNSIGNED NOT NULL,
+            quantity         INT UNSIGNED NOT NULL DEFAULT 1,
+            created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY unique_grade_model_year (academic_year_id, grade_id, custom_model_id),
+            KEY academic_year_id (academic_year_id),
+            KEY grade_id (grade_id),
+            KEY custom_model_id (custom_model_id)
+        ) $col;";
+
+
         foreach ( $tables as $sql ) {
             dbDelta( $sql );
         }
@@ -397,6 +413,7 @@ class OS_Activator {
             "{$p}os_transfers",
             "{$p}os_audit_log",
             "{$p}os_student_uniform_sizes",
+            "{$p}os_entitlements",
         );
     }
 }

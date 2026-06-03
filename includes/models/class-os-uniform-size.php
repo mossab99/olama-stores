@@ -301,4 +301,17 @@ class OS_Uniform_Size {
     public static function get_actual_size_totals( string $academic_year, string $grade_key = '' ): array {
         return self::get_size_totals( $academic_year, $grade_key );
     }
+
+    /**
+     * Get uniform size record for a student by UID and year ID.
+     */
+    public static function get_by_student_uid( string $student_uid, int $academic_year_id ): ?array {
+        global $wpdb;
+        $table = $wpdb->prefix . 'os_student_uniform_sizes';
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE student_uid = %s AND academic_year_id = %d LIMIT 1",
+            $student_uid, $academic_year_id
+        ), ARRAY_A );
+        return $row ?: null;
+    }
 }

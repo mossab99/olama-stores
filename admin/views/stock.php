@@ -4,7 +4,9 @@
         <span class="dashicons dashicons-chart-bar"></span>
         <?php esc_html_e( 'Stock Management', 'olama-stores' ); ?>
         <?php if ( OS_Roles::can( 'os_receive_stock' ) ): ?>
-            <a href="#" id="os-btn-receive-stock" class="page-title-action"><?php esc_html_e( 'Record Receipt', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-receive-shipment" class="page-title-action"><?php esc_html_e( 'Receive Shipment', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-receive-stock" class="page-title-action"><?php esc_html_e( 'Single Receipt', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-transfer-stock" class="page-title-action"><?php esc_html_e( 'Transfer Stock', 'olama-stores' ); ?></a>
         <?php endif; ?>
         <?php if ( OS_Roles::can( 'os_adjust_stock' ) ): ?>
             <a href="#" id="os-btn-adjust-stock" class="page-title-action"><?php esc_html_e( 'Manual Adjustment', 'olama-stores' ); ?></a>
@@ -141,6 +143,88 @@
             </div>
         </div>
     </div>
+
+    <!-- REC-04: Batch Shipment Drawer -->
+    <div id="os-shipment-drawer" style="display:none; background:#fff; border:1px solid #ddd; border-radius:6px; padding:24px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;"><span class="dashicons dashicons-download" style="margin-right:6px;"></span><?php esc_html_e( 'Receive Shipment', 'olama-stores' ); ?></h2>
+            <button type="button" class="button" id="os-shipment-drawer-close">&times; <?php esc_html_e( 'Close', 'olama-stores' ); ?></button>
+        </div>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+            <div class="os-form-row" style="flex:1; min-width:160px;">
+                <label><?php esc_html_e( 'Receipt Type', 'olama-stores' ); ?></label>
+                <select id="os-shipment-type" style="width:100%;">
+                    <option value="purchase_receipt"><?php esc_html_e( 'Purchase Receipt', 'olama-stores' ); ?></option>
+                    <option value="opening_balance"><?php esc_html_e( 'Opening Balance', 'olama-stores' ); ?></option>
+                </select>
+            </div>
+            <div class="os-form-row" style="flex:2; min-width:200px;">
+                <label><?php esc_html_e( 'Notes (applies to all lines)', 'olama-stores' ); ?></label>
+                <input type="text" id="os-shipment-notes" style="width:100%;" placeholder="<?php esc_attr_e( 'e.g. Invoice #1234', 'olama-stores' ); ?>">
+            </div>
+        </div>
+
+        <table class="wp-list-table widefat" id="os-shipment-lines-table">
+            <thead><tr>
+                <th style="width:40%;"><?php esc_html_e( 'Item', 'olama-stores' ); ?></th>
+                <th style="width:25%;"><?php esc_html_e( 'Warehouse', 'olama-stores' ); ?></th>
+                <th style="width:15%;"><?php esc_html_e( 'Quantity', 'olama-stores' ); ?></th>
+                <th style="width:15%;"><?php esc_html_e( 'Line Notes', 'olama-stores' ); ?></th>
+                <th style="width:5%;"></th>
+            </tr></thead>
+            <tbody id="os-shipment-lines-body">
+                <!-- Rows injected by JS -->
+            </tbody>
+        </table>
+
+        <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+            <button type="button" class="button" id="os-shipment-add-row">
+                <span class="dashicons dashicons-plus-alt2" style="margin-top:3px;"></span>
+                <?php esc_html_e( 'Add Line', 'olama-stores' ); ?>
+            </button>
+            <span id="os-shipment-row-limit-msg" style="display:none; color:#d63638; font-size:0.85em;"><?php esc_html_e( 'Maximum 50 lines.', 'olama-stores' ); ?></span>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+                <button type="button" class="button button-primary" id="os-shipment-submit"><?php esc_html_e( 'Post Shipment', 'olama-stores' ); ?></button>
+                <button type="button" class="button" id="os-shipment-drawer-close2"><?php esc_html_e( 'Cancel', 'olama-stores' ); ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- REC-08: Transfer Stock Modal -->
+    <div id="os-transfer-modal" class="os-modal" style="display:none;">
+        <div class="os-modal-content">
+            <h2><?php esc_html_e( 'Transfer Stock Between Warehouses', 'olama-stores' ); ?></h2>
+            <div class="os-form-row">
+                <label><?php esc_html_e( 'Item', 'olama-stores' ); ?></label>
+                <div class="os-input-group">
+                    <input type="text" class="os-modal-item-search" data-target="#os-transfer-item" placeholder="<?php esc_attr_e( 'Search items...', 'olama-stores' ); ?>">
+                    <select id="os-transfer-item"></select>
+                </div>
+            </div>
+            <div class="os-form-row">
+                <label><?php esc_html_e( 'From Warehouse', 'olama-stores' ); ?></label>
+                <select id="os-transfer-from-wh"></select>
+            </div>
+            <div class="os-form-row">
+                <label><?php esc_html_e( 'To Warehouse', 'olama-stores' ); ?></label>
+                <select id="os-transfer-to-wh"></select>
+            </div>
+            <div class="os-form-row">
+                <label><?php esc_html_e( 'Quantity', 'olama-stores' ); ?></label>
+                <input type="number" id="os-transfer-qty" min="1" value="1">
+                <small id="os-transfer-avail" style="color:#0073aa;"></small>
+            </div>
+            <div class="os-form-row">
+                <label><?php esc_html_e( 'Notes', 'olama-stores' ); ?></label>
+                <textarea id="os-transfer-notes"></textarea>
+            </div>
+            <div class="os-form-actions">
+                <button type="button" class="button button-primary" id="os-transfer-submit"><?php esc_html_e( 'Execute Transfer', 'olama-stores' ); ?></button>
+                <button type="button" class="button os-modal-close"><?php esc_html_e( 'Cancel', 'olama-stores' ); ?></button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -277,6 +361,9 @@
         wp.apiFetch({ path:'/olama-stores/v1/warehouses' }),
         wp.apiFetch({ path:'/olama-stores/v1/categories' }),
     ]).then(function(r){
+        // Cache warehouses for batch drawer + transfer modal
+        shipmentWarehouses = r[0];
+
         var whOpts='<option value=""><?php esc_html_e("All Warehouses","olama-stores");?></option>';
         r[0].forEach(function(w){ whOpts+='<option value="'+w.id+'">'+w.name+'</option>'; });
         $('#os-filter-warehouse, #os-receipt-warehouse, #os-adjust-warehouse').html(whOpts);
@@ -433,6 +520,166 @@
     $('#os-btn-export-stock').on('click', function(){
         window.location = olamaStores.apiRoot + '/reports/export/stock?_wpnonce=' + olamaStores.nonce;
     });
+
+    // ── REC-04: Batch Shipment Drawer ─────────────────────────────────────────
+    var OS_SHIP_MAX = 50;
+    var shipmentWarehouses = [];
+
+    function makeShipmentRow(warehouses) {
+        var whOpts = '<option value=""></option>';
+        warehouses.forEach(function(w){ whOpts += '<option value="'+w.id+'">'+w.name+'</option>'; });
+
+        var $tr = $('<tr class="os-shipment-line">').append(
+            $('<td>').append(
+                $('<div class="os-input-group">').append(
+                    $('<input type="text" class="os-modal-item-search os-shipment-item-search">').attr('placeholder', '<?php esc_attr_e( 'Search items...', 'olama-stores' ); ?>'),
+                    $('<select class="os-shipment-item-select"></select>')
+                )
+            ),
+            $('<td>').append( $('<select class="os-shipment-wh-select" style="width:100%;"></select>').html(whOpts) ),
+            $('<td>').append( $('<input type="number" class="os-shipment-qty" min="1" value="1" style="width:80px;">') ),
+            $('<td>').append( $('<input type="text" class="os-shipment-line-notes" style="width:100%;" placeholder="<?php esc_attr_e( 'Optional', 'olama-stores' ); ?>">') ),
+            $('<td>').append( $('<button type="button" class="button button-small os-shipment-remove-row">&times;</button>') )
+        );
+        return $tr;
+    }
+
+    function updateShipmentRowCount() {
+        var count = $('#os-shipment-lines-body .os-shipment-line').length;
+        var atMax = count >= OS_SHIP_MAX;
+        $('#os-shipment-add-row').prop('disabled', atMax);
+        $('#os-shipment-row-limit-msg').toggle(atMax);
+        // Hide remove btn if only 1 row
+        $('#os-shipment-lines-body .os-shipment-remove-row').show();
+        if (count === 1) $('#os-shipment-lines-body .os-shipment-remove-row').first().hide();
+    }
+
+    $('#os-btn-receive-shipment').on('click', function(e){
+        e.preventDefault();
+        var $body = $('#os-shipment-lines-body');
+        $body.empty();
+        // Use already-loaded warehouses list
+        var whs = shipmentWarehouses.length ? shipmentWarehouses : [];
+        $body.append(makeShipmentRow(whs));
+        window.osSearchItems('', $body.find('.os-shipment-item-select'), null, { per_page: 20 });
+        updateShipmentRowCount();
+        $('#os-shipment-drawer').slideDown(200);
+        $('html, body').animate({ scrollTop: $('#os-shipment-drawer').offset().top - 80 }, 300);
+    });
+
+    $('#os-shipment-add-row').on('click', function(){
+        if ($('#os-shipment-lines-body .os-shipment-line').length >= OS_SHIP_MAX) return;
+        var $newRow = makeShipmentRow(shipmentWarehouses);
+        $('#os-shipment-lines-body').append($newRow);
+        window.osSearchItems('', $newRow.find('.os-shipment-item-select'), null, { per_page: 20 });
+        updateShipmentRowCount();
+    });
+
+    $(document).on('click', '.os-shipment-remove-row', function(){
+        $(this).closest('.os-shipment-line').remove();
+        updateShipmentRowCount();
+    });
+
+    $('#os-shipment-drawer-close, #os-shipment-drawer-close2').on('click', function(){
+        $('#os-shipment-drawer').slideUp(200);
+    });
+
+    $('#os-shipment-submit').on('click', function(){
+        var $btn = $(this);
+        var items = [];
+        var hasError = false;
+
+        $('#os-shipment-lines-body .os-shipment-line').each(function(i){
+            var itemId = parseInt($(this).find('.os-shipment-item-select').val());
+            var whId   = parseInt($(this).find('.os-shipment-wh-select').val());
+            var qty    = parseInt($(this).find('.os-shipment-qty').val());
+            var notes  = $(this).find('.os-shipment-line-notes').val();
+
+            if (!itemId || !whId || !qty || qty <= 0) {
+                alert('<?php esc_html_e( 'Row', 'olama-stores' ); ?> ' + (i+1) + ': <?php esc_html_e( 'Please fill in item, warehouse, and quantity.', 'olama-stores' ); ?>');
+                hasError = true;
+                return false; // break each
+            }
+            items.push({ item_id: itemId, warehouse_id: whId, quantity: qty, notes: notes });
+        });
+
+        if (hasError || !items.length) return;
+
+        $btn.prop('disabled', true).text('<?php esc_html_e( 'Posting...', 'olama-stores' ); ?>');
+
+        wp.apiFetch({
+            path: '/olama-stores/v1/stock/receive-batch',
+            method: 'POST',
+            data: {
+                movement_type:    $('#os-shipment-type').val(),
+                notes:            $('#os-shipment-notes').val(),
+                academic_year_id: olamaStores.activeYearId,
+                items:            items
+            }
+        }).then(function(res){
+            alert('<?php esc_html_e( 'Shipment posted successfully!', 'olama-stores' ); ?> (' + res.count + ' <?php esc_html_e( 'items)', 'olama-stores' ); ?>');
+            $('#os-shipment-drawer').slideUp(200);
+            loadStock();
+        }).catch(function(e){
+            alert(e.message || '<?php esc_html_e( 'Error posting shipment.', 'olama-stores' ); ?>');
+        }).finally(function(){
+            $btn.prop('disabled', false).text('<?php esc_html_e( 'Post Shipment', 'olama-stores' ); ?>');
+        });
+    });
+
+    // ── REC-08: Transfer Stock Modal ──────────────────────────────────────────
+    function updateTransferAvailStock() {
+        var itemId = $('#os-transfer-item').val();
+        var whId   = $('#os-transfer-from-wh').val();
+        if (!itemId || !whId) { $('#os-transfer-avail').text(''); return; }
+        wp.apiFetch({ path: '/olama-stores/v1/stock?item_id=' + itemId + '&warehouse_id=' + whId }).then(function(rows){
+            if (!rows.items || !rows.items.length) { $('#os-transfer-avail').text('<?php esc_html_e( 'Available: 0', 'olama-stores' ); ?>'); return; }
+            var avail = parseInt(rows.items[0].quantity_available) || 0;
+            $('#os-transfer-avail').text('<?php esc_html_e( 'Available:', 'olama-stores' ); ?> ' + avail);
+        });
+    }
+
+    $('#os-btn-transfer-stock').on('click', function(e){
+        e.preventDefault();
+        var whOpts = '<option value=""></option>';
+        shipmentWarehouses.forEach(function(w){ whOpts += '<option value="'+w.id+'">'+w.name+'</option>'; });
+        $('#os-transfer-from-wh, #os-transfer-to-wh').html(whOpts);
+        window.osSearchItems('', $('#os-transfer-item'));
+        $('#os-transfer-modal').find('.os-modal-item-search').val('');
+        $('#os-transfer-avail').text('');
+        $('#os-transfer-qty').val(1);
+        $('#os-transfer-notes').val('');
+        $('#os-transfer-modal').show();
+    });
+
+    $('#os-transfer-item, #os-transfer-from-wh').on('change', updateTransferAvailStock);
+
+    $('#os-transfer-submit').on('click', function(){
+        var $btn = $(this);
+        var payload = {
+            item_id:           parseInt($('#os-transfer-item').val()),
+            from_warehouse_id: parseInt($('#os-transfer-from-wh').val()),
+            to_warehouse_id:   parseInt($('#os-transfer-to-wh').val()),
+            quantity:          parseInt($('#os-transfer-qty').val()),
+            notes:             $('#os-transfer-notes').val()
+        };
+        if (!payload.item_id || !payload.from_warehouse_id || !payload.to_warehouse_id || !payload.quantity) {
+            alert('<?php esc_html_e( 'Please fill in all required fields.', 'olama-stores' ); ?>');
+            return;
+        }
+        $btn.prop('disabled', true).text('<?php esc_html_e( 'Transferring...', 'olama-stores' ); ?>');
+        wp.apiFetch({ path: '/olama-stores/v1/stock/transfer', method: 'POST', data: payload }).then(function(){
+            alert('<?php esc_html_e( 'Transfer completed successfully.', 'olama-stores' ); ?>');
+            $('#os-transfer-modal').hide();
+            loadStock();
+        }).catch(function(e){
+            alert(e.message || '<?php esc_html_e( 'Transfer failed.', 'olama-stores' ); ?>');
+        }).finally(function(){
+            $btn.prop('disabled', false).text('<?php esc_html_e( 'Execute Transfer', 'olama-stores' ); ?>');
+        });
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
 })(jQuery);
 </script>
 

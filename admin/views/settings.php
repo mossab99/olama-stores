@@ -14,6 +14,7 @@
         <a href="#tab-fabrics" class="nav-tab" data-tab="fabrics"><?php esc_html_e( 'Fabrics', 'olama-stores' ); ?></a>
         <a href="#tab-colors" class="nav-tab" data-tab="colors"><?php esc_html_e( 'Colors', 'olama-stores' ); ?></a>
         <a href="#tab-sizes" class="nav-tab" data-tab="sizes"><?php esc_html_e( 'Sizes', 'olama-stores' ); ?></a>
+        <a href="#tab-entitlements" class="nav-tab" data-tab="entitlements"><?php esc_html_e( 'Uniform Entitlements', 'olama-stores' ); ?></a>
         <a href="#tab-integration" class="nav-tab" data-tab="integration"><?php esc_html_e( 'School Integration', 'olama-stores' ); ?></a>
         <a href="#tab-maintenance" class="nav-tab" data-tab="maintenance"><?php esc_html_e( 'Maintenance', 'olama-stores' ); ?></a>
     </div>
@@ -52,6 +53,39 @@
                 <?php esc_html_e( 'Clear Warehouse', 'olama-stores' ); ?>
             </button>
         </div>
+
+        <!-- REC-14: Year-End Transition Panel -->
+        <?php if ( OS_Roles::can( 'os_manage_settings' ) ) : ?>
+        <div class="os-card" style="margin-top:20px; max-width:700px; border:1px solid var(--os-border); background:var(--os-surface); padding:24px; border-radius:var(--os-radius); box-shadow:var(--os-shadow-sm); position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:#7c3aed;"></div>
+            <h3 style="margin-top:0; display:flex; align-items:center; gap:8px; color:#5b21b6;">
+                <span class="dashicons dashicons-calendar-alt" style="font-size:1.3rem; width:1.3rem; height:1.3rem; color:#7c3aed;"></span>
+                <?php esc_html_e( 'Year-End Transition', 'olama-stores' ); ?>
+            </h3>
+            <p style="color:var(--os-text-muted); margin:8px 0 16px;">
+                <?php esc_html_e( 'Run these tasks before activating a new academic year. Load the summary first to understand the current state.', 'olama-stores' ); ?>
+            </p>
+
+            <div id="os-year-transition-summary" style="background:var(--os-bg,#f0f0f1); border-radius:6px; padding:16px; margin-bottom:16px;">
+                <p style="margin:0; color:#666;"><?php esc_html_e( 'Click the button below to load the year-end summary.', 'olama-stores' ); ?></p>
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="button" id="os-yt-load-summary">
+                    <span class="dashicons dashicons-search" style="margin-top:3px;"></span>
+                    <?php esc_html_e( 'Load Summary', 'olama-stores' ); ?>
+                </button>
+                <button type="button" class="button" id="os-yt-export-balances">
+                    <span class="dashicons dashicons-download" style="margin-top:3px;"></span>
+                    <?php esc_html_e( 'Export Stock Balances', 'olama-stores' ); ?>
+                </button>
+                <button type="button" class="button" id="os-yt-flag-overdue" style="color:#7c3aed; border-color:#7c3aed;">
+                    <span class="dashicons dashicons-flag" style="margin-top:3px;"></span>
+                    <?php esc_html_e( 'Flag Overdue Custody', 'olama-stores' ); ?>
+                </button>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php
         // Register settings (simple inline approach)
@@ -173,6 +207,36 @@
                     <button type="button" class="button os-modal-close"><?php esc_html_e( 'Cancel', 'olama-stores' ); ?></button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Uniform Entitlements Tab -->
+    <div id="tab-entitlements" class="os-tab-content" style="display:none;">
+        <h2><?php esc_html_e( 'Uniform Entitlements', 'olama-stores' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Define the quantities of uniform custom models that students in each grade are entitled to receive per academic year.', 'olama-stores' ); ?></p>
+        
+        <div class="os-card" style="margin-bottom: 20px; padding: 20px; border: 1px solid var(--os-border); background: var(--os-surface); border-radius: var(--os-radius); max-width: 800px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight:600;"><?php esc_html_e( 'Grade', 'olama-stores' ); ?> *</label>
+                    <select id="os-ent-grade" style="width:100%; height: 35px;"></select>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight:600;"><?php esc_html_e( 'Uniform Model', 'olama-stores' ); ?> *</label>
+                    <select id="os-ent-model" style="width:100%; height: 35px;"></select>
+                </div>
+                <div style="width: 100px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight:600;"><?php esc_html_e( 'Quantity', 'olama-stores' ); ?> *</label>
+                    <input type="number" id="os-ent-qty" min="1" value="1" style="width:100%; height: 35px;">
+                </div>
+                <div>
+                    <button type="button" class="button button-primary" id="os-btn-add-entitlement" style="height: 35px; font-weight:600;"><?php esc_html_e( 'Add Entitlement', 'olama-stores' ); ?></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="os-entitlements-list" style="max-width: 800px;">
+            <span class="os-loading"><?php esc_html_e( 'Loading entitlements…', 'olama-stores' ); ?></span>
         </div>
     </div>
 
@@ -315,6 +379,7 @@
         if($(this).data('tab')==='fabrics') loadFabrics();
         if($(this).data('tab')==='colors') loadColors();
         if($(this).data('tab')==='sizes') loadSizes();
+        if($(this).data('tab')==='entitlements') loadEntitlementsTab();
     });
     function loadWarehouses(){
         wp.apiFetch({ path:'/olama-stores/v1/warehouses' }).then(function(rows){
@@ -726,5 +791,147 @@
     $('.os-modal-close, .os-modal').on('click', function(e){
         if(e.target===this || $(e.target).hasClass('os-modal-close')) $(this).closest('.os-modal').hide();
     });
+    // REC-14: Year-End Transition
+    $('#os-yt-load-summary').on('click', function(){
+        var $wrap = $('#os-year-transition-summary');
+        $wrap.html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
+        wp.apiFetch({ path: '/olama-stores/v1/reports/year-transition/summary' }).then(function(d){
+            $wrap.html(
+                '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">'
+                + '<div style="text-align:center; background:#fff; border-radius:6px; padding:12px;"><div style="font-size:1.8em; font-weight:700; color:#0073aa;">'+d.open_custody+'</div><div style="font-size:.8em; color:#666;"><?php esc_html_e("Open Employee Custody","olama-stores");?></div></div>'
+                + '<div style="text-align:center; background:#fff; border-radius:6px; padding:12px;"><div style="font-size:1.8em; font-weight:700; color:#22c55e;">'+d.open_student+'</div><div style="font-size:.8em; color:#666;"><?php esc_html_e("Open Student Issues","olama-stores");?></div></div>'
+                + '<div style="text-align:center; background:#fff; border-radius:6px; padding:12px;"><div style="font-size:1.8em; font-weight:700; color:#d63638;">'+d.overdue_custody+'</div><div style="font-size:.8em; color:#666;"><?php esc_html_e("Overdue Returns","olama-stores");?></div></div>'
+                + '<div style="text-align:center; background:#fff; border-radius:6px; padding:12px;"><div style="font-size:1.4em; font-weight:700; color:#7c3aed;">'+parseFloat(d.total_stock_value||0).toLocaleString(undefined,{maximumFractionDigits:0})+'</div><div style="font-size:.8em; color:#666;"><?php esc_html_e("Stock Value","olama-stores");?></div></div>'
+                + '</div>'
+                + '<p style="margin-top:12px; font-size:.85em; color:#666;"><?php esc_html_e("Active Year:","olama-stores");?> <strong>' + d.year_name + '</strong></p>'
+            );
+        }).catch(function(e){ $wrap.html('<p class="os-error">' + (e.message||'Error') + '</p>'); });
+    });
+
+    $('#os-yt-export-balances').on('click', function(){
+        if(!confirm('<?php esc_html_e("Export current stock balances to Excel before year transition?","olama-stores");?>')) return;
+        window.location = olamaStores.apiRoot + '/reports/export/stock?_wpnonce=' + olamaStores.nonce;
+    });
+
+    $('#os-yt-flag-overdue').on('click', function(){
+        if(!confirm('<?php esc_html_e("Flag all overdue custody records with a year-end note? This updates their notes field only.","olama-stores");?>')) return;
+        var $btn = $(this).prop('disabled', true);
+        wp.apiFetch({ path:'/olama-stores/v1/reports/year-transition/run', method:'POST', data:{ action:'flag_overdue_custody' } })
+            .then(function(r){ alert('<?php esc_html_e("Flagged","olama-stores");?> ' + r.flagged + ' <?php esc_html_e("overdue records.","olama-stores");?>'); })
+            .catch(function(e){ alert(e.message||'Error'); })
+            .finally(function(){ $btn.prop('disabled',false); });
+    });
+
+    // ── Uniform Entitlements JS ──
+    function loadEntitlementsTab() {
+        Promise.all([
+            wp.apiFetch({ path: '/olama-stores/v1/grades' }),
+            wp.apiFetch({ path: '/olama-stores/v1/custom-models' }),
+            wp.apiFetch({ path: '/olama-stores/v1/entitlements?academic_year_id=' + olamaStores.activeYearId })
+        ]).then(function(results){
+            var grades = results[0];
+            var models = results[1];
+            var entitlements = results[2];
+
+            // Populate grade dropdown
+            var gradeHtml = '<option value=""><?php esc_html_e("Select Grade…", "olama-stores"); ?></option>';
+            grades.forEach(function(g){ gradeHtml += '<option value="'+g.id+'">'+g.grade_name+'</option>'; });
+            $('#os-ent-grade').html(gradeHtml);
+
+            // Populate model dropdown
+            var modelHtml = '<option value=""><?php esc_html_e("Select Model…", "olama-stores"); ?></option>';
+            models.forEach(function(m){ modelHtml += '<option value="'+m.id+'">'+m.name+'</option>'; });
+            $('#os-ent-model').html(modelHtml);
+
+            renderEntitlementsList(entitlements);
+        }).catch(function(e) {
+            $('#os-entitlements-list').html('<p class="os-error">' + (e.message || 'Error loading metadata.') + '</p>');
+        });
+    }
+
+    function renderEntitlementsList(list) {
+        if (!list || !list.length) {
+            $('#os-entitlements-list').html('<p><?php esc_html_e("No entitlements defined for the active year.", "olama-stores"); ?></p>');
+            return;
+        }
+
+        var html = '<table class="wp-list-table widefat striped">'
+            + '<thead><tr>'
+            + '<th><?php esc_html_e("Grade", "olama-stores"); ?></th>'
+            + '<th><?php esc_html_e("Uniform Model", "olama-stores"); ?></th>'
+            + '<th style="text-align:center;"><?php esc_html_e("Quantity", "olama-stores"); ?></th>'
+            + '<th style="width: 100px;"><?php esc_html_e("Actions", "olama-stores"); ?></th>'
+            + '</tr></thead><tbody>';
+
+        list.forEach(function(e) {
+            html += '<tr>'
+                + '<td>' + (e.grade_name || 'Grade #' + e.grade_id) + '</td>'
+                + '<td>' + (e.model_name || 'Model #' + e.custom_model_id) + '</td>'
+                + '<td style="text-align:center;">' + e.quantity + '</td>'
+                + '<td><button type="button" class="button button-small button-link-delete os-delete-entitlement" data-id="' + e.id + '"><span class="dashicons dashicons-trash"></span></button></td>'
+                + '</tr>';
+        });
+
+        html += '</tbody></table>';
+        $('#os-entitlements-list').html(html);
+    }
+
+    $('#os-btn-add-entitlement').on('click', function() {
+        var gradeId = $('#os-ent-grade').val();
+        var modelId = $('#os-ent-model').val();
+        var qty = $('#os-ent-qty').val();
+
+        if (!gradeId || !modelId || !qty || qty <= 0) {
+            alert('<?php esc_html_e("Please fill in grade, model, and quantity.", "olama-stores"); ?>');
+            return;
+        }
+
+        var payload = {
+            academic_year_id: olamaStores.activeYearId,
+            grade_id: parseInt(gradeId),
+            custom_model_id: parseInt(modelId),
+            quantity: parseInt(qty)
+        };
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('<?php esc_html_e("Adding…", "olama-stores"); ?>');
+        
+        wp.apiFetch({
+            path: '/olama-stores/v1/entitlements',
+            method: 'POST',
+            data: payload
+        }).then(function() {
+            $('#os-ent-qty').val(1);
+            $('#os-ent-grade').val('');
+            $('#os-ent-model').val('');
+            // Reload list
+            wp.apiFetch({ path: '/olama-stores/v1/entitlements?academic_year_id=' + olamaStores.activeYearId }).then(function(entitlements){
+                renderEntitlementsList(entitlements);
+            });
+        }).catch(function(err) {
+            alert(err.message || 'Error saving entitlement');
+        }).finally(function() {
+            $btn.prop('disabled', false).text('<?php esc_html_e("Add Entitlement", "olama-stores"); ?>');
+        });
+    });
+
+    $(document).on('click', '.os-delete-entitlement', function() {
+        if (!confirm('<?php esc_html_e("Delete this entitlement rule?", "olama-stores"); ?>')) return;
+        var id = $(this).data('id');
+        var $row = $(this).closest('tr').css('opacity', 0.5);
+        
+        wp.apiFetch({
+            path: '/olama-stores/v1/entitlements/' + id,
+            method: 'DELETE'
+        }).then(function() {
+            wp.apiFetch({ path: '/olama-stores/v1/entitlements?academic_year_id=' + olamaStores.activeYearId }).then(function(entitlements){
+                renderEntitlementsList(entitlements);
+            });
+        }).catch(function(err) {
+            $row.css('opacity', 1);
+            alert(err.message || 'Error deleting entitlement');
+        });
+    });
+
 })(jQuery);
 </script>

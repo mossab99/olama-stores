@@ -108,7 +108,33 @@
             </div>
         </div>
     </div>
+
+    <!-- REC-07: Hidden Custody Print Receipt -->
+    <div id="os-custody-print-receipt" style="display:none;">
+        <div class="os-receipt-header">
+            <h2><?php esc_html_e( 'Custody Card', 'olama-stores' ); ?></h2>
+            <p><strong><?php esc_html_e( 'Academic Year:', 'olama-stores' ); ?></strong> <?php echo esc_html( os_get_active_year_name() ); ?></p>
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-top:16px;">
+            <tr><td style="padding:8px; border:1px solid #333; font-weight:bold;"><?php esc_html_e( 'Employee', 'olama-stores' ); ?></td><td style="padding:8px; border:1px solid #333;" id="os-custody-receipt-employee"></td></tr>
+            <tr><td style="padding:8px; border:1px solid #333; font-weight:bold;"><?php esc_html_e( 'Item / Warehouse', 'olama-stores' ); ?></td><td style="padding:8px; border:1px solid #333;" id="os-custody-receipt-item"></td></tr>
+            <tr><td style="padding:8px; border:1px solid #333; font-weight:bold;"><?php esc_html_e( 'Quantity', 'olama-stores' ); ?></td><td style="padding:8px; border:1px solid #333;" id="os-custody-receipt-qty"></td></tr>
+            <tr><td style="padding:8px; border:1px solid #333; font-weight:bold;"><?php esc_html_e( 'Assigned Date', 'olama-stores' ); ?></td><td style="padding:8px; border:1px solid #333;" id="os-custody-receipt-date"></td></tr>
+            <tr><td style="padding:8px; border:1px solid #333; font-weight:bold;"><?php esc_html_e( 'Expected Return', 'olama-stores' ); ?></td><td style="padding:8px; border:1px solid #333;" id="os-custody-receipt-return"></td></tr>
+        </table>
+        <div class="os-receipt-footer" style="margin-top:40px; display:flex; gap:80px;">
+            <div style="border-top:1px solid #333; padding-top:6px; min-width:200px;"><?php esc_html_e( 'Received by:', 'olama-stores' ); ?> ___________________________</div>
+            <div style="border-top:1px solid #333; padding-top:6px; min-width:200px;"><?php esc_html_e( 'Issued by:', 'olama-stores' ); ?> ___________________________</div>
+        </div>
+    </div>
 </div>
+
+<style>
+@media print {
+    body > * { display: none !important; }
+    #os-custody-print-receipt { display: block !important; font-family: Arial, sans-serif; padding: 20px; }
+}
+</style>
 
 <script>
 (function($){
@@ -134,7 +160,7 @@
         rows.forEach(function(r){
             html += '<tr id="os-assignment-row-'+r.id+'">'
                 + '<td>'+r.id+'</td>'
-                + '<td>'+r.assignee_id+'</td>'
+                + '<td>'+(r.assignee_name || r.assignee_id)+'</td>'
                 + '<td>'+(r.item_name||'')+'<br><small>'+r.sku+'</small></td>'
                 + '<td>'+(r.warehouse_name||'')+'</td>'
                 + '<td>'+r.quantity_assigned+'</td>'
@@ -215,19 +241,39 @@
     $('#os-assign-back').on('click', function(){ $('#os-assignment-step1').show(); $('#os-assignment-step2').hide(); });
 
     $('#os-assign-confirm').on('click', function(){
+        var employeeName = $('#os-assign-person option:selected').text();
+        var itemName     = $('#os-assign-item option:selected').text();
+        var warehouse    = $('#os-assign-warehouse option:selected').text();
+        var qty          = $('#os-assign-qty').val();
+        var assignDate   = $('#os-assign-date').val();
+        var returnDate   = $('#os-assign-return-date').val();
+
         var payload = {
             assignee_type:      'employee',
             assignee_id:        $('#os-assign-person').val(),
             item_id:            parseInt($('#os-assign-item').val()),
             warehouse_id:       parseInt($('#os-assign-warehouse').val()),
-            quantity_assigned:  parseInt($('#os-assign-qty').val()),
-            assigned_date:      $('#os-assign-date').val(),
-            expected_return_date: $('#os-assign-return-date').val(),
+            quantity_assigned:  parseInt(qty),
+            assigned_date:      assignDate,
+            expected_return_date: returnDate,
             notes:              $('#os-assign-notes').val(),
             academic_year_id:   olamaStores.activeYearId
         };
         wp.apiFetch({ path:'/olama-stores/v1/assignments', method:'POST', data:payload }).then(function(){
             $('#os-assignment-modal').hide();
+
+            // REC-07: Offer to print custody card
+            if (confirm('<?php esc_html_e( 'Custody assigned successfully! Click OK to print the custody card.', 'olama-stores' ); ?>')) {
+                $('#os-custody-receipt-employee').text(employeeName);
+                $('#os-custody-receipt-item').text(itemName + ' (' + warehouse + ')');
+                $('#os-custody-receipt-qty').text(qty);
+                $('#os-custody-receipt-date').text(assignDate);
+                $('#os-custody-receipt-return').text(returnDate || '—');
+                $('#os-custody-print-receipt').show();
+                window.print();
+                $('#os-custody-print-receipt').hide();
+            }
+
             loadAssignments();
         }).catch(function(e){ alert(e.message||'<?php esc_html_e("Error issuing items","olama-stores");?>'); });
     });

@@ -22,6 +22,16 @@ class OS_API_Stock {
             'methods' => 'POST', 'callback' => array( __CLASS__, 'receive_stock' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
         ) );
+        // REC-04: Batch multi-item shipment receipt
+        register_rest_route( self::NS, '/stock/receive-batch', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'receive_batch' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
+        ) );
+        // REC-08: Inter-warehouse transfer
+        register_rest_route( self::NS, '/stock/transfer', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'transfer_stock' ),
+            'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
+        ) );
         register_rest_route( self::NS, '/stock/bulk-validate', array(
             'methods' => 'POST', 'callback' => array( __CLASS__, 'bulk_validate_stock' ),
             'permission_callback' => function() { return OS_Roles::can( 'os_receive_stock' ); },
@@ -301,5 +311,137 @@ class OS_API_Stock {
         $result = OS_Stock_Service::delete_transactions_testing( $filters );
         if ( is_wp_error( $result ) ) { return $result; }
         return rest_ensure_response( array( 'success' => true ) );
+    }
+
+    // ── REC-04: Batch shipment receipt ────────────────────────────────────────
+    /**
+     * Receive a multi-item shipment in a single atomic transaction.
+     * Expects: { movement_type, notes, academic_year_id, items: [{ item_id, warehouse_id, quantity, notes }] }
+     */
+    public static function receive_batch( $request ) {
+        global $wpdb;
+        $data             = $request->get_json_params();
+        $movement_type    = sanitize_key( $data['movement_type'] ?? 'purchase_receipt' );
+        $shared_notes     = sanitize_textarea_field( $data['notes'] ?? '' );
+        $academic_year_id = ! empty( $data['academic_year_id'] ) ? (int) $data['academic_year_id'] : os_get_active_year_id();
+        $items            = isset( $data['items'] ) && is_array( $data['items'] ) ? $data['items'] : array();
+
+        if ( empty( $items ) ) {
+            return new WP_Error( 'empty_items', __( 'No items provided.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+
+        // Validate each line before any DB writes
+        foreach ( $items as $i => $line ) {
+            if ( empty( $line['item_id'] ) || (int) $line['item_id'] <= 0 ) {
+                return new WP_Error( 'invalid_item', sprintf( __( 'Row %d: Please select an item.', 'olama-stores' ), $i + 1 ), array( 'status' => 400 ) );
+            }
+            if ( empty( $line['warehouse_id'] ) || (int) $line['warehouse_id'] <= 0 ) {
+                return new WP_Error( 'invalid_warehouse', sprintf( __( 'Row %d: Please select a warehouse.', 'olama-stores' ), $i + 1 ), array( 'status' => 400 ) );
+            }
+            if ( empty( $line['quantity'] ) || (int) $line['quantity'] <= 0 ) {
+                return new WP_Error( 'invalid_qty', sprintf( __( 'Row %d: Quantity must be greater than 0.', 'olama-stores' ), $i + 1 ), array( 'status' => 400 ) );
+            }
+        }
+
+        $wpdb->query( 'START TRANSACTION' );
+        $movement_ids = array();
+
+        foreach ( $items as $line ) {
+            $row_data = array(
+                'item_id'          => (int) $line['item_id'],
+                'warehouse_id'     => (int) $line['warehouse_id'],
+                'quantity'         => (int) $line['quantity'],
+                'movement_type'    => $movement_type,
+                'notes'            => sanitize_textarea_field( $line['notes'] ?? $shared_notes ),
+                'academic_year_id' => $academic_year_id,
+            );
+
+            // Call record_receipt without its own transaction (we're wrapping it)
+            $result = OS_Stock_Service::record_receipt_no_tx( $row_data );
+            if ( is_wp_error( $result ) ) {
+                $wpdb->query( 'ROLLBACK' );
+                return $result;
+            }
+            $movement_ids[] = $result;
+        }
+
+        $wpdb->query( 'COMMIT' );
+        return rest_ensure_response( array( 'success' => true, 'count' => count( $movement_ids ), 'movement_ids' => $movement_ids ), 201 );
+    }
+
+    // ── REC-08: Inter-warehouse transfer ─────────────────────────────────────
+    /**
+     * Transfer stock between warehouses atomically.
+     * Expects: { item_id, from_warehouse_id, to_warehouse_id, quantity, notes }
+     */
+    public static function transfer_stock( $request ) {
+        global $wpdb;
+        $data             = $request->get_json_params();
+        $item_id          = (int) ( $data['item_id'] ?? 0 );
+        $from_wh          = (int) ( $data['from_warehouse_id'] ?? 0 );
+        $to_wh            = (int) ( $data['to_warehouse_id'] ?? 0 );
+        $quantity         = (int) ( $data['quantity'] ?? 0 );
+        $notes            = sanitize_textarea_field( $data['notes'] ?? '' );
+        $academic_year_id = os_get_active_year_id();
+
+        if ( $item_id <= 0 || $from_wh <= 0 || $to_wh <= 0 || $quantity <= 0 ) {
+            return new WP_Error( 'invalid_data', __( 'Item, warehouses, and quantity are all required.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+        if ( $from_wh === $to_wh ) {
+            return new WP_Error( 'same_warehouse', __( 'Source and destination warehouse must be different.', 'olama-stores' ), array( 'status' => 400 ) );
+        }
+
+        // Check available stock in source warehouse
+        $available = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT GREATEST(0, quantity_on_hand - quantity_reserved) FROM {$wpdb->prefix}os_stock
+             WHERE item_id = %d AND warehouse_id = %d",
+            $item_id, $from_wh
+        ) );
+
+        if ( $available < $quantity ) {
+            return new WP_Error( 'insufficient_stock',
+                sprintf( __( 'Insufficient available stock. Available: %d, Requested: %d.', 'olama-stores' ), $available, $quantity ),
+                array( 'status' => 400 )
+            );
+        }
+
+        $wpdb->query( 'START TRANSACTION' );
+
+        // transfer_out: reduce source warehouse
+        $out_data = array(
+            'item_id'          => $item_id,
+            'warehouse_id'     => $from_wh,
+            'quantity'         => -$quantity,
+            'movement_type'    => OS_Stock_Service::TRANSFER_OUT,
+            'notes'            => $notes,
+            'academic_year_id' => $academic_year_id,
+        );
+        $result_out = OS_Stock_Service::record_raw_movement( $out_data );
+        if ( is_wp_error( $result_out ) ) {
+            $wpdb->query( 'ROLLBACK' );
+            return $result_out;
+        }
+
+        // transfer_in: increase destination warehouse
+        $in_data = array(
+            'item_id'          => $item_id,
+            'warehouse_id'     => $to_wh,
+            'quantity'         => $quantity,
+            'movement_type'    => OS_Stock_Service::TRANSFER_IN,
+            'notes'            => $notes,
+            'academic_year_id' => $academic_year_id,
+        );
+        $result_in = OS_Stock_Service::record_raw_movement( $in_data );
+        if ( is_wp_error( $result_in ) ) {
+            $wpdb->query( 'ROLLBACK' );
+            return $result_in;
+        }
+
+        $wpdb->query( 'COMMIT' );
+        return rest_ensure_response( array(
+            'success'          => true,
+            'transfer_out_id'  => $result_out,
+            'transfer_in_id'   => $result_in,
+        ), 201 );
     }
 }

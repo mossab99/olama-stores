@@ -123,6 +123,135 @@ class OS_Stock_Service {
         return $movement_id;
     }
 
+    /**
+     * Internal: receipt without its own transaction (for use inside receive_batch's outer transaction).
+     * Same as record_receipt() but skips START TRANSACTION / COMMIT so callers can batch multiple calls.
+     *
+     * @param  array $data  Same shape as record_receipt().
+     * @return int|WP_Error  New movement ID or error.
+     */
+    public static function record_receipt_no_tx( $data ) {
+        global $wpdb;
+
+        $item_id          = (int) ( $data['item_id'] ?? 0 );
+        $warehouse_id     = (int) ( $data['warehouse_id'] ?? 0 );
+        $quantity         = (int) ( $data['quantity'] ?? 0 );
+        $movement_type    = sanitize_key( $data['movement_type'] ?? self::PURCHASE_RECEIPT );
+        $notes            = sanitize_textarea_field( $data['notes'] ?? '' );
+        $academic_year_id = (int) ( $data['academic_year_id'] ?? os_get_active_year_id() );
+
+        if ( $item_id <= 0 || $warehouse_id <= 0 || $quantity <= 0 ) {
+            return new WP_Error( 'invalid_data', __( 'Invalid item, warehouse, or quantity.', 'olama-stores' ) );
+        }
+
+        $existing = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}os_stock WHERE item_id = %d AND warehouse_id = %d",
+            $item_id, $warehouse_id
+        ) );
+
+        if ( $existing ) {
+            $wpdb->query( $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}os_stock SET quantity_on_hand = quantity_on_hand + %d, last_updated_at = %s WHERE id = %d",
+                $quantity, current_time( 'mysql', 1 ), $existing
+            ) );
+        } else {
+            $wpdb->insert( "{$wpdb->prefix}os_stock", array(
+                'item_id'           => $item_id,
+                'warehouse_id'      => $warehouse_id,
+                'quantity_on_hand'  => $quantity,
+                'quantity_reserved' => 0,
+                'last_updated_at'   => current_time( 'mysql', 1 ),
+            ) );
+        }
+
+        $wpdb->insert( "{$wpdb->prefix}os_stock_movements", array(
+            'item_id'          => $item_id,
+            'warehouse_id'     => $warehouse_id,
+            'movement_type'    => $movement_type,
+            'quantity'         => $quantity,
+            'notes'            => $notes,
+            'academic_year_id' => $academic_year_id ?: null,
+            'performed_by'     => get_current_user_id(),
+            'performed_at'     => current_time( 'mysql', 1 ),
+        ) );
+
+        $movement_id = $wpdb->insert_id;
+        if ( ! $movement_id ) {
+            return new WP_Error( 'db_error', __( 'Failed to record movement.', 'olama-stores' ) );
+        }
+        return $movement_id;
+    }
+
+    /**
+     * Internal: write a signed quantity movement (positive or negative) and update stock_on_hand.
+     * Used for transfer_out (negative) and transfer_in (positive).
+     * Does NOT manage transactions — caller is responsible.
+     *
+     * @param  array $data  item_id, warehouse_id, quantity (signed), movement_type, notes, academic_year_id.
+     * @return int|WP_Error  Movement ID or error.
+     */
+    public static function record_raw_movement( $data ) {
+        global $wpdb;
+
+        $item_id          = (int) ( $data['item_id'] ?? 0 );
+        $warehouse_id     = (int) ( $data['warehouse_id'] ?? 0 );
+        $quantity         = (int) ( $data['quantity'] ?? 0 ); // may be negative
+        $movement_type    = sanitize_key( $data['movement_type'] ?? '' );
+        $notes            = sanitize_textarea_field( $data['notes'] ?? '' );
+        $academic_year_id = (int) ( $data['academic_year_id'] ?? os_get_active_year_id() );
+
+        if ( $item_id <= 0 || $warehouse_id <= 0 || $quantity === 0 ) {
+            return new WP_Error( 'invalid_data', __( 'Invalid movement data.', 'olama-stores' ) );
+        }
+
+        // Upsert stock row (add signed quantity)
+        $existing = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}os_stock WHERE item_id = %d AND warehouse_id = %d",
+            $item_id, $warehouse_id
+        ) );
+
+        if ( $existing ) {
+            $ok = $wpdb->query( $wpdb->prepare(
+                "UPDATE {$wpdb->prefix}os_stock SET quantity_on_hand = quantity_on_hand + %d, last_updated_at = %s WHERE id = %d",
+                $quantity, current_time( 'mysql', 1 ), $existing
+            ) );
+        } else {
+            // Only create a row if adding stock (transfer_in)
+            if ( $quantity < 0 ) {
+                return new WP_Error( 'no_stock_row', __( 'Cannot transfer out from a warehouse with no stock record.', 'olama-stores' ) );
+            }
+            $ok = $wpdb->insert( "{$wpdb->prefix}os_stock", array(
+                'item_id'           => $item_id,
+                'warehouse_id'      => $warehouse_id,
+                'quantity_on_hand'  => $quantity,
+                'quantity_reserved' => 0,
+                'last_updated_at'   => current_time( 'mysql', 1 ),
+            ) );
+        }
+
+        if ( false === $ok ) {
+            return new WP_Error( 'db_error', __( 'Failed to update stock balance.', 'olama-stores' ) );
+        }
+
+        // Log the absolute quantity (positive) in movements table
+        $wpdb->insert( "{$wpdb->prefix}os_stock_movements", array(
+            'item_id'          => $item_id,
+            'warehouse_id'     => $warehouse_id,
+            'movement_type'    => $movement_type,
+            'quantity'         => abs( $quantity ),
+            'notes'            => $notes,
+            'academic_year_id' => $academic_year_id ?: null,
+            'performed_by'     => get_current_user_id(),
+            'performed_at'     => current_time( 'mysql', 1 ),
+        ) );
+
+        $movement_id = $wpdb->insert_id;
+        if ( ! $movement_id ) {
+            return new WP_Error( 'db_error', __( 'Failed to record movement log.', 'olama-stores' ) );
+        }
+        return $movement_id;
+    }
+
     // ── Issue items ───────────────────────────────────────────────────────────
 
     /**
@@ -194,12 +323,71 @@ class OS_Stock_Service {
             return new WP_Error( 'invalid_data', __( 'No valid items or quantities provided.', 'olama-stores' ) );
         }
 
+        $grade_id = 0;
+        if ( $assignee_type === 'student' ) {
+            $student  = OS_School_Integration::get_student_by_uid( $assignee_id );
+            $grade_id = $student ? (int) $student->grade_id : 0;
+        }
+
+        $batch_model_qtys = array();
+
         $wpdb->query( 'START TRANSACTION' );
 
         $assignment_ids = array();
         foreach ( $items_to_issue as $it ) {
             $item_id = $it['item_id'];
             $quantity = $it['quantity'];
+
+            // Check uniform entitlement if student
+            if ( $assignee_type === 'student' && $grade_id > 0 ) {
+                $item = OS_Item::get( $item_id );
+                if ( $item && ! empty( $item->specifications['model_id'] ) ) {
+                    $custom_model_id = (int) $item->specifications['model_id'];
+                    
+                    // Fetch entitlement limit
+                    $entitlement = $wpdb->get_row( $wpdb->prepare(
+                        "SELECT * FROM {$wpdb->prefix}os_entitlements WHERE academic_year_id = %d AND grade_id = %d AND custom_model_id = %d",
+                        $academic_year_id, $grade_id, $custom_model_id
+                    ) );
+
+                    if ( $entitlement ) {
+                        // Already issued active in database
+                        $already_issued = (int) $wpdb->get_var( $wpdb->prepare(
+                            "SELECT COALESCE(SUM(a.quantity_assigned - a.quantity_returned), 0)
+                             FROM {$wpdb->prefix}os_assignments a
+                             INNER JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
+                             WHERE a.assignee_type = 'student'
+                               AND a.assignee_id = %s
+                               AND a.status = 'active'
+                               AND a.academic_year_id = %d
+                               AND i.specifications LIKE %s",
+                            $assignee_id,
+                            $academic_year_id,
+                            '%"model_id":"' . (int) $custom_model_id . '"%'
+                        ) );
+
+                        // Add what was already processed in this batch
+                        $current_batch_qty = $batch_model_qtys[ $custom_model_id ] ?? 0;
+                        $total_requested   = $already_issued + $current_batch_qty + $quantity;
+
+                        if ( $total_requested > (int) $entitlement->quantity ) {
+                            if ( empty( $data['override_entitlement'] ) ) {
+                                $wpdb->query( 'ROLLBACK' );
+                                return new WP_Error( 'entitlement_exceeded', sprintf(
+                                    __( 'Entitlement exceeded for %s. Limit: %d, Issued: %d, Requested: %d.', 'olama-stores' ),
+                                    $item->name,
+                                    (int) $entitlement->quantity,
+                                    $already_issued + $current_batch_qty,
+                                    $quantity
+                                ) );
+                            }
+                        }
+                        
+                        // Accumulate for this batch
+                        $batch_model_qtys[ $custom_model_id ] = $current_batch_qty + $quantity;
+                    }
+                }
+            }
 
             // Lock: check available stock
             $stock = $wpdb->get_row( $wpdb->prepare(

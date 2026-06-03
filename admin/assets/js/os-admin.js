@@ -150,11 +150,12 @@ if ( typeof window.wp.apiFetch !== 'function' ) {
     var modalSearchTimer;
     $(document).on('input', '.os-modal-item-search', function(){
         var $input = $(this), q = $input.val(), target = $input.data('target');
+        var $target = target ? $(target) : $input.next('select');
         // Check if this search input is inside the withdrawal modal → restrict to custom items
         var inWdModal = $input.closest('#os-withdraw-modal').length > 0;
         clearTimeout(modalSearchTimer);
         modalSearchTimer = setTimeout(function(){ 
-            window.osSearchItems(q, $(target), null, inWdModal ? { per_page: 50, is_custom: 1 } : {}); 
+            window.osSearchItems(q, $target, null, inWdModal ? { per_page: 50, is_custom: 1 } : {}); 
         }, 400);
     });
 

@@ -282,4 +282,189 @@
     background-color: #fff;
 }
 
+/* =============================================================================
+   MOBILE RESPONSIVE STYLES (REC-20)
+   ============================================================================= */
+
+/* WordPress Admin mobile adjustments & Olama layout */
+@media (max-width: 782px) {
+    .os-wrap {
+        padding: 12px;
+    }
+    
+    .os-page-title {
+        font-size: 1.35rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 1.25rem;
+    }
+    
+    .os-page-title a.page-title-action {
+        margin-left: 0 !important;
+        margin-top: 4px;
+    }
+
+    /* Horizontal scroll for settings tabs */
+    .os-wrap .nav-tab-wrapper {
+        display: flex !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-bottom: 2px solid var(--os-border) !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 1.5rem !important;
+        scrollbar-width: none !important; /* Firefox */
+    }
+    
+    .os-wrap .nav-tab-wrapper::-webkit-scrollbar {
+        display: none !important; /* Chrome/Safari */
+    }
+    
+    .os-wrap .nav-tab-wrapper .nav-tab {
+        float: none !important;
+        display: inline-block !important;
+        margin-bottom: 0 !important;
+        padding: 8px 14px !important;
+        font-size: 13px !important;
+        border-bottom: none !important;
+        line-height: 2 !important;
+    }
+
+    /* Scrollable wrappers for tables to prevent layout break */
+    #os-assignments-table-wrap,
+    #os-stock-table-wrap,
+    #os-items-table-wrap,
+    #os-movements-table-wrap,
+    #os-spend-table-wrap,
+    #os-aging-table-wrap,
+    #os-ic-table-wrap,
+    #os-recent-movements-wrap,
+    #os-top-items-wrap {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: var(--os-radius);
+        box-shadow: var(--os-shadow-sm);
+        margin-bottom: 1.5rem;
+    }
+    
+    .os-wrap table.wp-list-table {
+        min-width: 600px; /* Ensure columns don't squeeze too much */
+    }
+}
+
+/* Medium & Small Mobile devices */
+@media (max-width: 600px) {
+    /* Form Rows to stacked columns */
+    .os-form-row {
+        grid-template-columns: 1fr !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+        margin-bottom: 14px;
+    }
+    
+    .os-form-row label:first-child {
+        font-size: 0.8rem;
+        margin-bottom: 2px;
+    }
+
+    /* Modals resizing & centering */
+    .os-modal-content {
+        padding: 20px !important;
+        width: 92% !important;
+        max-width: 440px;
+        margin: 16px auto;
+        max-height: 85vh;
+        box-sizing: border-box;
+    }
+    
+    .os-modal-content h2 {
+        font-size: 1.1rem;
+        padding-bottom: 8px;
+        margin-bottom: 14px;
+    }
+
+    .os-form-actions {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 18px;
+        padding-top: 14px;
+    }
+    
+    .os-form-actions button, 
+    .os-form-actions .button {
+        width: 100% !important;
+        text-align: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    /* Filters wrapping */
+    .os-filters {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    
+    .os-filter-input, 
+    .os-filters select,
+    .os-filters button,
+    .os-filters .button {
+        width: 100% !important;
+        box-sizing: border-box;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    /* KPI grid goes single column */
+    .os-kpi-grid-5 {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    /* Auto wrap item rows in withdrawals modal */
+    .os-item-row > div[style*="display:flex"] {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    
+    .os-item-row .os-wd-qty-input {
+        flex: 0 0 70px !important;
+        width: 70px !important;
+    }
+    
+    .os-item-row .os-input-group {
+        flex: 1 1 calc(100% - 90px) !important;
+    }
+    
+    .os-item-row .os-btn-remove-row {
+        flex: 0 0 32px !important;
+        height: 32px !important;
+        line-height: 30px !important;
+        padding: 0 !important;
+        text-align: center;
+    }
+    
+    .os-row-stock-avail {
+        margin-left: 0 !important;
+        display: block;
+        margin-top: 4px;
+        text-align: left;
+    }
+    
+    .os-items-header {
+        display: none !important;
+    }
+    
+    /* Center text in cards */
+    .os-kpi-card {
+        padding: 1.25rem;
+    }
+}
+
+
 

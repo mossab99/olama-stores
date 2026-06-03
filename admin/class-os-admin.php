@@ -31,16 +31,29 @@ class OS_Admin
             'restBase'       => esc_url_raw( rest_url() ),
             'apiRoot'        => esc_url_raw( rest_url( 'olama-stores/v1' ) ),
             'nonce'          => wp_create_nonce( 'wp_rest' ),
-            'activeYearId' => os_get_active_year_id(),
+            'activeYearId'   => os_get_active_year_id(),
             'activeYearName' => os_get_active_year_name(),
+            'activeYearStart' => ( function() {
+                if ( class_exists( 'Olama_School_Academic' ) ) {
+                    $year = Olama_School_Academic::get_active_year();
+                    if ( $year && ! empty( $year->start_date ) ) {
+                        return $year->start_date; // expects 'Y-m-d' format
+                    }
+                    // Fallback: derive from year_name if it looks like "2024-2025"
+                    if ( $year && preg_match( '/^(\d{4})/', $year->year_name, $m ) ) {
+                        return $m[1] . '-09-01'; // assume Sep 1 school year start
+                    }
+                }
+                return gmdate( 'Y' ) . '-01-01';
+            } )(),
             'pluginUrl' => OS_URL,
             'caps' => array(
-                'manage_items' => OS_Roles::can('os_manage_items'),
-                'adjust_stock' => OS_Roles::can('os_adjust_stock'),
-                'run_count' => OS_Roles::can('os_run_inventory_count'),
-                'manage_settings' => OS_Roles::can('os_manage_settings'),
+                'manage_items'      => OS_Roles::can('os_manage_items'),
+                'adjust_stock'      => OS_Roles::can('os_adjust_stock'),
+                'run_count'         => OS_Roles::can('os_run_inventory_count'),
+                'manage_settings'   => OS_Roles::can('os_manage_settings'),
                 'manage_warehouses' => OS_Roles::can('os_manage_warehouses'),
-                'is_admin' => current_user_can('manage_options'),
+                'is_admin'          => current_user_can('manage_options'),
             ),
         );
 
@@ -75,6 +88,11 @@ class OS_Admin
         add_submenu_page('olama-stores', __('Books Withdrawal', 'olama-stores'), __('Books Withdrawal', 'olama-stores'), 'os_view_assignments', 'olama-stores-books-withdrawal', array($this, 'page_books_withdrawal'));
         add_submenu_page('olama-stores', __('Reports', 'olama-stores'), __('Reports', 'olama-stores'), 'os_view_reports', 'olama-stores-reports', array($this, 'page_reports'));
         add_submenu_page('olama-stores', __('Order Estimation', 'olama-stores'), __('Order Estimation', 'olama-stores'), 'os_manage_order_estimation', 'olama-stores-order-estimation', array($this, 'page_order_estimation'));
+
+        // REC-06: Inventory Count page
+        if ( OS_Roles::can( 'os_run_inventory_count' ) ) {
+            add_submenu_page('olama-stores', __('Inventory Count', 'olama-stores'), __('Inventory Count', 'olama-stores'), 'os_run_inventory_count', 'olama-stores-inventory-count', array($this, 'page_inventory_count'));
+        }
 
         if (OS_Roles::can('os_manage_settings')) {
             add_submenu_page('olama-stores', __('Settings', 'olama-stores'), __('Settings', 'olama-stores'), 'os_manage_settings', 'olama-stores-settings', array($this, 'page_settings'));
@@ -150,6 +168,11 @@ class OS_Admin
     public function page_order_estimation()
     {
         $this->render_view('order-estimation');
+    }
+    // REC-06
+    public function page_inventory_count()
+    {
+        $this->render_view('inventory-count');
     }
     public function page_settings()
     {

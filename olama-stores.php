@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'OS_VERSION',           '1.1.0' );
+define( 'OS_VERSION',           '1.2.0' );
 define( 'OS_PATH',              plugin_dir_path( __FILE__ ) );
 define( 'OS_URL',               plugin_dir_url( __FILE__ ) );
 define( 'OS_FILE',              __FILE__ );
@@ -61,6 +61,8 @@ function os_load_includes() {
     require_once OS_PATH . 'includes/ajax/class-os-estimation-ajax.php';
     require_once OS_PATH . 'includes/models/class-os-uniform-size.php';
     require_once OS_PATH . 'includes/ajax/class-os-uniform-size-ajax.php';
+    require_once OS_PATH . 'includes/models/class-os-entitlement.php';
+    require_once OS_PATH . 'includes/api/class-os-api-entitlements.php';
     OS_Estimation_Ajax::register();
     OS_Uniform_Size_Ajax::register();
     if ( is_admin() ) {
@@ -116,6 +118,7 @@ function os_init() {
         OS_API_Assignments::register_routes();
         OS_API_Reports::register_routes();
         OS_API_Books_Withdrawal::register_routes();
+        OS_API_Entitlements::register_routes();
     } );
 
     if ( is_admin() ) { new OS_Admin(); }

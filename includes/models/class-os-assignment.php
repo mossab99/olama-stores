@@ -35,24 +35,35 @@ class OS_Assignment {
         }
 
         $where_sql = implode( ' AND ', $where );
-        $sql = "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name
+        $sql = "SELECT a.*, i.name AS item_name, i.sku, i.specifications, w.name AS warehouse_name,
+                    u.display_name AS assignee_name
                 FROM {$wpdb->prefix}os_assignments a
                 LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
                 LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
+                LEFT JOIN {$wpdb->users} u ON (a.assignee_type = 'employee' AND CAST(a.assignee_id AS UNSIGNED) = u.ID)
                 WHERE $where_sql ORDER BY a.created_at DESC";
 
-        return $params
+        $rows = $params
             ? $wpdb->get_results( $wpdb->prepare( $sql, ...$params ) )
             : $wpdb->get_results( $sql );
+
+        foreach ( $rows as $row ) {
+            if ( isset( $row->specifications ) ) {
+                $row->specifications = $row->specifications ? json_decode( $row->specifications, true ) : array();
+            }
+        }
+        return $rows;
     }
 
     public static function get( $id ) {
         global $wpdb;
         return $wpdb->get_row( $wpdb->prepare(
-            "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name
+            "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name,
+                 u.display_name AS assignee_name
              FROM {$wpdb->prefix}os_assignments a
              LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
              LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
+             LEFT JOIN {$wpdb->users} u ON (a.assignee_type = 'employee' AND CAST(a.assignee_id AS UNSIGNED) = u.ID)
              WHERE a.id = %d", $id
         ) );
     }
