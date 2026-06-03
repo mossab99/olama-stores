@@ -136,9 +136,9 @@ class OS_API_Reports {
             $year_id
         ) );
 
-        // REC-09: Total inventory value = SUM(quantity_on_hand * unit_cost)
+        // REC-09: Total inventory value = SUM(quantity_on_hand * unit_price)
         $inventory_value = (float) $wpdb->get_var(
-            "SELECT COALESCE(SUM(s.quantity_on_hand * COALESCE(i.unit_cost, 0)), 0)
+            "SELECT COALESCE(SUM(s.quantity_on_hand * COALESCE(i.unit_price, 0)), 0)
              FROM {$wpdb->prefix}os_stock s
              LEFT JOIN {$wpdb->prefix}os_items i ON s.item_id = i.id
              WHERE i.is_active = 1"
@@ -164,8 +164,8 @@ class OS_API_Reports {
         $rows = $wpdb->get_results(
             "SELECT i.name, i.sku,
                     SUM(s.quantity_on_hand) AS total_qty,
-                    COALESCE(i.unit_cost, 0) AS unit_cost,
-                    SUM(s.quantity_on_hand * COALESCE(i.unit_cost, 0)) AS total_value
+                    COALESCE(i.unit_price, 0) AS unit_price,
+                    SUM(s.quantity_on_hand * COALESCE(i.unit_price, 0)) AS total_value
              FROM {$wpdb->prefix}os_stock s
              LEFT JOIN {$wpdb->prefix}os_items i ON s.item_id = i.id
              WHERE i.is_active = 1
@@ -212,14 +212,13 @@ class OS_API_Reports {
 
         $where_sql = implode( ' AND ', $where_parts );
 
-        // Join providers through movement notes reference (notes field stores provider info)
-        // Main query: spend by provider grouped = receipts × unit_cost
+        // Main query: spend by provider grouped = receipts × unit_price
         $sql = "SELECT
                     COALESCE(p.company_name, '—') AS provider_name,
                     p.id AS provider_id,
                     COUNT(DISTINCT sm.id) AS receipt_count,
                     SUM(sm.quantity) AS total_units,
-                    SUM(sm.quantity * COALESCE(i.unit_cost, 0)) AS total_spend
+                    SUM(sm.quantity * COALESCE(i.unit_price, 0)) AS total_spend
                 FROM {$wpdb->prefix}os_stock_movements sm
                 LEFT JOIN {$wpdb->prefix}os_items i ON sm.item_id = i.id
                 LEFT JOIN {$wpdb->prefix}os_providers p ON sm.provider_id = p.id
@@ -292,7 +291,7 @@ class OS_API_Reports {
             $year_id
         ) );
         $total_stock_value = (float) $wpdb->get_var(
-            "SELECT COALESCE(SUM(s.quantity_on_hand * COALESCE(i.unit_cost, 0)), 0)
+            "SELECT COALESCE(SUM(s.quantity_on_hand * COALESCE(i.unit_price, 0)), 0)
              FROM {$wpdb->prefix}os_stock s LEFT JOIN {$wpdb->prefix}os_items i ON s.item_id = i.id WHERE i.is_active = 1"
         );
 
