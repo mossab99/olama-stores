@@ -1,9 +1,11 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } ?>
 <div class="wrap os-wrap" id="os-dashboard">
     <h1 class="os-page-title">
-        <span class="dashicons dashicons-performance"></span>
-        <?php esc_html_e( 'Warehouse Intelligence', 'olama-stores' ); ?>
-        <span class="os-year-badge"><?php echo esc_html( os_get_active_year_name() ); ?></span>
+        <div class="os-title-left">
+            <span class="dashicons dashicons-performance"></span>
+            <?php esc_html_e( 'Warehouse Intelligence', 'olama-stores' ); ?>
+            <span class="os-year-badge"><?php echo esc_html( os_get_active_year_name() ); ?></span>
+        </div>
         <?php if ( OS_Roles::can( 'os_run_inventory_count' ) ) : ?>
             <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-stock' ) ); ?>" class="page-title-action">
                 <span class="dashicons dashicons-clipboard"></span> <?php esc_html_e( 'Inventory Count', 'olama-stores' ); ?>
@@ -14,84 +16,90 @@
     <!-- REC-13: Expanded 5-card KPI Grid (REC-09 adds inventory value) -->
     <div class="os-kpi-grid os-kpi-grid-5">
         <div class="os-kpi-card os-kpi-loading" id="os-kpi-total-items" title="<?php esc_attr_e( 'View all items', 'olama-stores' ); ?>">
-            <span class="os-kpi-icon dashicons dashicons-products"></span>
+            <div class="os-kpi-header">
+                <span class="os-kpi-icon dashicons dashicons-products"></span>
+                <span class="os-kpi-label"><?php esc_html_e( 'Total SKUs', 'olama-stores' ); ?></span>
+            </div>
             <a class="os-kpi-value" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-items' ) ); ?>">—</a>
-            <span class="os-kpi-label"><?php esc_html_e( 'Total SKUs', 'olama-stores' ); ?></span>
         </div>
         <div class="os-kpi-card os-kpi-loading os-kpi-warning" id="os-kpi-low-stock" title="<?php esc_attr_e( 'View low stock items', 'olama-stores' ); ?>">
-            <span class="os-kpi-icon dashicons dashicons-warning"></span>
+            <div class="os-kpi-header">
+                <span class="os-kpi-icon dashicons dashicons-warning"></span>
+                <span class="os-kpi-label"><?php esc_html_e( 'Low stock', 'olama-stores' ); ?></span>
+            </div>
             <a class="os-kpi-value" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-stock&filter=low_stock' ) ); ?>">—</a>
-            <span class="os-kpi-label"><?php esc_html_e( 'Low Stock', 'olama-stores' ); ?></span>
         </div>
         <div class="os-kpi-card os-kpi-loading os-kpi-success" id="os-kpi-active-assignments" title="<?php esc_attr_e( 'View active custody records', 'olama-stores' ); ?>">
-            <span class="os-kpi-icon dashicons dashicons-admin-users"></span>
+            <div class="os-kpi-header">
+                <span class="os-kpi-icon dashicons dashicons-admin-users"></span>
+                <span class="os-kpi-label"><?php esc_html_e( 'Active assignments', 'olama-stores' ); ?></span>
+            </div>
             <a class="os-kpi-value" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-assignments&status=active' ) ); ?>">—</a>
-            <span class="os-kpi-label"><?php esc_html_e( 'Active Assignments', 'olama-stores' ); ?></span>
         </div>
         <div class="os-kpi-card os-kpi-loading os-kpi-danger" id="os-kpi-pending-returns" title="<?php esc_attr_e( 'View overdue returns', 'olama-stores' ); ?>">
-            <span class="os-kpi-icon dashicons dashicons-undo"></span>
+            <div class="os-kpi-header">
+                <span class="os-kpi-icon dashicons dashicons-undo"></span>
+                <span class="os-kpi-label"><?php esc_html_e( 'Overdue returns', 'olama-stores' ); ?></span>
+            </div>
             <a class="os-kpi-value" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-assignments&status=active' ) ); ?>">—</a>
-            <span class="os-kpi-label"><?php esc_html_e( 'Overdue Returns', 'olama-stores' ); ?></span>
         </div>
         <!-- REC-09: Inventory value KPI -->
         <div class="os-kpi-card os-kpi-loading os-kpi-info" id="os-kpi-inventory-value" title="<?php esc_attr_e( 'Total stock value', 'olama-stores' ); ?>">
-            <span class="os-kpi-icon dashicons dashicons-money-alt"></span>
+            <div class="os-kpi-header">
+                <span class="os-kpi-icon dashicons dashicons-money-alt"></span>
+                <span class="os-kpi-label"><?php esc_html_e( 'Inventory value', 'olama-stores' ); ?></span>
+            </div>
             <span class="os-kpi-value" style="cursor:default;">—</span>
-            <span class="os-kpi-label"><?php esc_html_e( 'Inventory Value', 'olama-stores' ); ?></span>
         </div>
     </div>
 
-    <!-- REC-13: Two-column expanded bottom layout -->
-    <div class="os-dashboard-bottom os-dashboard-bottom-expanded">
+    <!-- Stacked dashboard bottom layout -->
+    <div class="os-dashboard-bottom">
 
-        <!-- Left column: Quick Actions + Top Items by Value -->
-        <div class="os-dashboard-left">
-            <div class="os-section-card">
-                <div class="os-section-header">
-                    <h2><span class="dashicons dashicons-external"></span> <?php esc_html_e( 'Quick Operations', 'olama-stores' ); ?></h2>
-                </div>
-                <div class="os-quick-actions">
-                    <?php if ( OS_Roles::can( 'os_manage_items' ) ) : ?>
-                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-items' ) ); ?>" class="button button-primary">
-                        <span class="dashicons dashicons-plus"></span> <?php esc_html_e( 'Add Item', 'olama-stores' ); ?>
-                    </a>
-                    <?php endif; ?>
-                    <?php if ( OS_Roles::can( 'os_receive_stock' ) ) : ?>
-                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-stock' ) ); ?>" class="button">
-                        <span class="dashicons dashicons-download"></span> <?php esc_html_e( 'Receive Shipment', 'olama-stores' ); ?>
-                    </a>
-                    <?php endif; ?>
-                    <?php if ( OS_Roles::can( 'os_process_assignments' ) ) : ?>
-                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-assignments' ) ); ?>" class="button">
-                        <span class="dashicons dashicons-admin-users"></span> <?php esc_html_e( 'Issue Items', 'olama-stores' ); ?>
-                    </a>
-                    <?php endif; ?>
-                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-reports' ) ); ?>" class="button">
-                        <span class="dashicons dashicons-chart-area"></span> <?php esc_html_e( 'Reports', 'olama-stores' ); ?>
-                    </a>
-                </div>
+        <!-- Quick Operations -->
+        <div class="os-section-card" style="margin-bottom:20px;">
+            <div class="os-section-header">
+                <h2><span class="dashicons dashicons-menu-alt3"></span> <?php esc_html_e( 'Quick Operations', 'olama-stores' ); ?></h2>
             </div>
-
-            <!-- REC-13: Top Items by Value panel -->
-            <div class="os-section-card" style="margin-top:20px;">
-                <div class="os-section-header">
-                    <h2><span class="dashicons dashicons-star-filled"></span> <?php esc_html_e( 'Top Items by Value', 'olama-stores' ); ?></h2>
-                </div>
-                <div id="os-top-items-wrap">
-                    <span class="os-loading"><?php esc_html_e( 'Loading…', 'olama-stores' ); ?></span>
-                </div>
+            <div class="os-quick-actions">
+                <?php if ( OS_Roles::can( 'os_manage_items' ) ) : ?>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-items' ) ); ?>" class="button">
+                    <span class="dashicons dashicons-plus"></span> <span><?php esc_html_e( 'Add Item', 'olama-stores' ); ?></span>
+                </a>
+                <?php endif; ?>
+                <?php if ( OS_Roles::can( 'os_receive_stock' ) ) : ?>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-stock' ) ); ?>" class="button">
+                    <span class="dashicons dashicons-download"></span> <span><?php esc_html_e( 'Receive Shipment', 'olama-stores' ); ?></span>
+                </a>
+                <?php endif; ?>
+                <?php if ( OS_Roles::can( 'os_process_assignments' ) ) : ?>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-assignments' ) ); ?>" class="button">
+                    <span class="dashicons dashicons-admin-users"></span> <span><?php esc_html_e( 'Issue Items', 'olama-stores' ); ?></span>
+                </a>
+                <?php endif; ?>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-stores-reports' ) ); ?>" class="button">
+                    <span class="dashicons dashicons-chart-area"></span> <span><?php esc_html_e( 'Reports', 'olama-stores' ); ?></span>
+                </a>
             </div>
         </div>
 
-        <!-- Right column: Recent Inventory Activity -->
-        <div class="os-dashboard-right">
-            <div class="os-section-card">
-                <div class="os-section-header">
-                    <h2><span class="dashicons dashicons-list-view"></span> <?php esc_html_e( 'Recent Inventory Activity', 'olama-stores' ); ?></h2>
-                </div>
-                <div id="os-recent-movements-wrap">
-                    <span class="os-loading"><?php esc_html_e( 'Retrieving activity log…', 'olama-stores' ); ?></span>
-                </div>
+        <!-- Recent Inventory Activity -->
+        <div class="os-section-card" style="margin-bottom:20px;">
+            <div class="os-section-header">
+                <h2><span class="dashicons dashicons-list-view"></span> <?php esc_html_e( 'Recent Inventory Activity', 'olama-stores' ); ?></h2>
+            </div>
+            <div id="os-recent-movements-wrap">
+                <span class="os-loading"><?php esc_html_e( 'Retrieving activity log…', 'olama-stores' ); ?></span>
+            </div>
+        </div>
+
+        <!-- Top Items by Value -->
+        <div class="os-section-card">
+            <div class="os-section-header">
+                <h2><i class="ti ti-trophy" aria-hidden="true"></i> <?php esc_html_e( 'Top Items by Value', 'olama-stores' ); ?></h2>
+            </div>
+            <div id="os-top-items-wrap">
+                <span class="os-loading"><?php esc_html_e( 'Loading…', 'olama-stores' ); ?></span>
             </div>
         </div>
 
@@ -149,7 +157,7 @@
         } else {
             data.recent_movements.forEach(function(m){
                 html += '<tr><td>' + m.performed_at + '</td>'
-                     + '<td>' + (m.item_name||'') + ' <small><code>' + (m.sku||'') + '</code></small></td>'
+                     + '<td><div class="os-activity-item-wrap">' + (m.item_name||'') + ' <small><code>' + (m.sku||'') + '</code></small></div></td>'
                      + '<td><span class="os-badge os-badge-' + m.movement_type + '">' + movementLabel(m.movement_type) + '</span></td>'
                      + '<td>' + m.quantity + '</td>'
                      + '<td>' + (m.performed_by_name||'') + '</td></tr>';
@@ -175,11 +183,14 @@
             var barPct = rows[0].total_value > 0 ? Math.round((r.total_value / rows[0].total_value) * 100) : 0;
             var val = parseFloat(r.total_value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
             html += '<tr><td>'
-                + '<div style="display:flex;align-items:center;gap:8px;">'
-                + '<span style="width:24px;height:24px;border-radius:50%;background:hsl('+(200+i*20)+',70%,52%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:bold;">'+(i+1)+'</span>'
-                + '<div><strong>' + r.name + '</strong><br><code style="font-size:0.75em;">' + r.sku + '</code></div>'
+                + '<div style="display:flex;align-items:center;gap:8px;width:100%;overflow:hidden;box-sizing:border-box;">'
+                + '<span style="width:24px;height:24px;border-radius:50%;background:hsl('+(200+i*20)+',70%,52%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:600;flex-shrink:0;">'+(i+1)+'</span>'
+                + '<div style="display:flex;align-items:baseline;gap:6px;overflow:hidden;flex:1;min-width:0;white-space:nowrap;">'
+                + '<strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">' + r.name + '</strong>'
+                + '<span style="font-size:10px;color:#64748b;font-family:monospace;flex-shrink:0;">' + r.sku + '</span>'
                 + '</div>'
-                + '<div style="margin-top:4px;height:4px;border-radius:2px;background:#e2e8f0;overflow:hidden;">'
+                + '</div>'
+                + '<div style="margin-top:4px;height:4px;border-radius:2px;background:#e2e8f0;overflow:hidden;margin-left:32px;">'
                 + '<div style="height:100%;width:'+barPct+'%;background:hsl('+(200+i*20)+',70%,52%);border-radius:2px;transition:width .4s;"></div>'
                 + '</div></td>'
                 + '<td style="text-align:right;vertical-align:top;">' + parseInt(r.total_qty) + '</td>'
@@ -202,15 +213,11 @@
 /* REC-09: Inventory value KPI card — teal/info accent */
 #os-kpi-inventory-value { --os-kpi-accent: #0891b2; }
 
-/* REC-13: Expanded bottom layout */
-.os-dashboard-bottom-expanded {
-    display: grid;
-    grid-template-columns: 1fr 1.6fr;
+/* Stacked bottom layout */
+.os-dashboard-bottom {
+    display: flex;
+    flex-direction: column;
     gap: 20px;
-    align-items: start;
+    width: 100%;
 }
-@media (max-width: 900px) {
-    .os-dashboard-bottom-expanded { grid-template-columns: 1fr; }
-}
-.os-dashboard-left, .os-dashboard-right { display: flex; flex-direction: column; gap: 0; }
 </style>

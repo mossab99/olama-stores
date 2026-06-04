@@ -1,30 +1,30 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } ?>
 <div class="wrap os-wrap" id="os-add-items-page">
-    <h1 class="os-page-title">
-        <span class="dashicons dashicons-plus"></span>
-        <?php esc_html_e( 'Add Items to Store', 'olama-stores' ); ?>
-    </h1>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px">
+        <i class="ti ti-plus" style="font-size:18px; color:#185FA5"></i>
+        <h1 style="font-size:18px; font-weight:500; margin:0"><?php esc_html_e( 'Add items to store', 'olama-stores' ); ?></h1>
+    </div>
 
     <!-- Tabs Navigation -->
     <div class="os-tabs-nav">
         <a href="#single" class="os-tab-link active" data-tab="single">
-            <span class="dashicons dashicons-insert"></span>
+            <i class="ti ti-edit"></i>
             <?php esc_html_e( 'Single Addition', 'olama-stores' ); ?>
         </a>
         <a href="#bulk" class="os-tab-link" data-tab="bulk">
-            <span class="dashicons dashicons-database-import"></span>
+            <i class="ti ti-upload"></i>
             <?php esc_html_e( 'Bulk Upload (CSV)', 'olama-stores' ); ?>
         </a>
     </div>
 
     <!-- Tab 1: Single Addition -->
     <div id="os-tab-single" class="os-tab-content active">
-        <div class="os-card">
-            <form id="os-add-items-form">
+        <div class="os-card os-form-card">
+            <form id="os-add-items-form" style="display: flex; flex-direction: column; gap: 16px;">
                 <div class="os-form-row full-width-field">
-                    <label><?php esc_html_e( 'Select Item', 'olama-stores' ); ?> *</label>
+                    <label><?php esc_html_e( 'Select Item', 'olama-stores' ); ?> <span style="color:#A32D2D; margin-left:2px;">*</span></label>
                     <div class="os-input-group">
-                        <input type="text" class="os-modal-item-search" data-target="#os-selected-item" placeholder="<?php esc_attr_e( 'Search by name, SKU or barcode…', 'olama-stores' ); ?>" autocomplete="off">
+                        <input type="text" class="os-modal-item-search" data-target="#os-selected-item" placeholder="<?php esc_attr_e( 'Search by name, SKU or barcode…', 'olama-stores' ); ?>" autocomplete="off" style="width: 100%;">
                         <select id="os-selected-item" required></select>
                     </div>
                 </div>
@@ -35,27 +35,28 @@
                     <p style="margin-bottom:0; color: #27ae60; font-size:1.15em; font-weight:600;"><span class="dashicons dashicons-chart-bar" style="font-size:18px; width:18px; height:18px; vertical-align:middle; margin-right:4px;"></span> <?php esc_html_e( 'Current Stock:', 'olama-stores' ); ?> <strong id="preview-stock"></strong></p>
                 </div>
 
-                <div class="os-form-row full-width-field">
-                    <label><?php esc_html_e( 'Warehouse', 'olama-stores' ); ?> *</label>
-                    <select id="os-warehouse-id" required style="border-color: #cbd5e1; height: 42px;">
-                        <option value=""><?php esc_html_e( 'Select Warehouse', 'olama-stores' ); ?></option>
-                    </select>
-                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="os-form-row full-width-field">
+                        <label><?php esc_html_e( 'Warehouse', 'olama-stores' ); ?> <span style="color:#A32D2D; margin-left:2px;">*</span></label>
+                        <select id="os-warehouse-id" required style="width: 100%;">
+                            <option value=""><?php esc_html_e( 'Select Warehouse', 'olama-stores' ); ?></option>
+                        </select>
+                    </div>
 
-                <div class="os-form-row full-width-field">
-                    <label><?php esc_html_e( 'Item Count (Quantity)', 'olama-stores' ); ?> *</label>
-                    <input type="number" id="os-item-count" min="1" value="1" required style="font-size: 1.2em; font-weight: bold; border-color: #cbd5e1; height: 42px;">
+                    <div class="os-form-row full-width-field">
+                        <label><?php esc_html_e( 'Item Count (Quantity)', 'olama-stores' ); ?> <span style="color:#A32D2D; margin-left:2px;">*</span></label>
+                        <input type="number" id="os-item-count" min="1" value="1" required style="width: 100%;">
+                    </div>
                 </div>
 
                 <div class="os-form-row full-width-field">
                     <label><?php esc_html_e( 'Notes', 'olama-stores' ); ?></label>
-                    <textarea id="os-notes" placeholder="<?php esc_attr_e( 'Optional notes about this addition...', 'olama-stores' ); ?>" style="min-height:90px; border-color: #cbd5e1;"></textarea>
+                    <textarea id="os-notes" placeholder="<?php esc_attr_e( 'Optional notes about this addition...', 'olama-stores' ); ?>" style="width: 100%; min-height:90px;"></textarea>
                 </div>
 
-                <div class="os-form-actions" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-                    <button type="submit" class="button button-primary button-large" id="os-btn-save-addition" style="width: 100%; height: 48px; font-size: 1.1em; border-radius: 8px; font-weight: 600;">
-                        <span class="dashicons dashicons-yes" style="vertical-align: middle; margin-top: -2px;"></span>
-                        <?php esc_html_e( 'Add to Store', 'olama-stores' ); ?>
+                <div class="os-form-actions" style="margin-top: 8px;">
+                    <button type="submit" id="os-btn-save-addition" style="background: #185FA5; color: #E6F1FB; border: none; padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;">
+                        <?php esc_html_e( 'Add to inventory', 'olama-stores' ); ?>
                     </button>
                 </div>
             </form>
@@ -234,7 +235,7 @@
         }).catch(function(e){
             alert(e.message || 'Error adding items');
         }).finally(function(){
-            btn.prop('disabled', false).html('<span class="dashicons dashicons-yes" style="vertical-align: middle; margin-top: -2px;"></span> <?php esc_html_e("Add to Store","olama-stores");?>');
+            btn.prop('disabled', false).html('<?php esc_html_e("Add to inventory","olama-stores");?>');
         });
     });
 
@@ -693,18 +694,32 @@
 
 /* Card aesthetics */
 .os-card { 
-    background: #fff; 
-    padding: 30px; 
-    border-radius: 12px; 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+    background: #ffffff; 
+    padding: 32px 40px; 
+    border-radius: 16px; 
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); 
     border: 1px solid #e2e8f0;
 }
-.os-form-row { margin-bottom: 25px; }
-.os-form-row label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
-.os-form-row input[type="text"], .os-form-row input[type="number"], .os-form-row select, .os-form-row textarea {
-    width: 100%; padding: 12px; border: 2px solid #eaeff2; border-radius: 8px; transition: border-color 0.2s; box-sizing: border-box;
+.os-form-card {
+    max-width: 640px; 
+    width: 100%;
+    background: var(--color-background-primary, #ffffff);
+    border: 0.5px solid var(--color-border-tertiary, #e2e8f0);
+    border-radius: 12px; 
+    padding: 20px 24px;
+    box-shadow: none;
 }
-.os-form-row input:focus, .os-form-row select:focus, .os-form-row textarea:focus { border-color: #3498db; outline: none; }
+.os-form-row { margin-bottom: 0; }
+.os-form-row label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--color-text-secondary, #64748b); font-weight: 500; }
+.os-form-row input[type="text"], .os-form-row input[type="number"], .os-form-row select, .os-form-row textarea {
+    width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 8px; transition: all 0.2s ease; box-sizing: border-box; background: #fff; color: #334155; font-size: 14px; line-height: 1.5;
+}
+.os-form-row input:focus, .os-form-row select:focus, .os-form-row textarea:focus { 
+    border-color: #3b82f6; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); 
+}
+.os-input-group { border: 1px solid #cbd5e1 !important; border-radius: 8px !important; transition: all 0.2s ease; }
+.os-input-group:focus-within { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+.os-input-group input { padding: 12px 16px !important; font-size: 14px !important; }
 .os-badge { padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.9em; display: inline-block; }
 .os-badge-success { background: #e6fffa; color: #047481; }
 

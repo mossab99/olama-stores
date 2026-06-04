@@ -1,22 +1,29 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } ?>
 <div class="wrap os-wrap" id="os-items-page">
     <h1 class="os-page-title">
-        <span class="dashicons dashicons-products"></span>
-        <?php esc_html_e( 'Item Registry', 'olama-stores' ); ?>
-        <?php if ( OS_Roles::can( 'os_manage_items' ) ): ?>
-            <a href="#" id="os-btn-add-item" class="page-title-action"><?php esc_html_e( 'Add Item', 'olama-stores' ); ?></a>
-            <a href="#" id="os-btn-add-custom" class="page-title-action" style="background-color: #e74c3c; border-color: #c0392b; color: #fff;"><?php esc_html_e( 'Add School Custom', 'olama-stores' ); ?></a>
-            <a href="#" id="os-btn-add-books" class="page-title-action" style="background-color: #27ae60; border-color: #219150; color: #fff;"><?php esc_html_e( 'Add Grade Books', 'olama-stores' ); ?></a>
-            <a href="#" id="os-btn-copy-provider" class="page-title-action" style="background-color: #8e44ad; border-color: #7d3c98; color: #fff;">
-                <span class="dashicons dashicons-controls-repeat" style="font-size:14px;width:14px;height:14px;vertical-align:middle;margin-right:3px;"></span>
-                <?php esc_html_e( 'Copy Provider Items', 'olama-stores' ); ?>
-            </a>
-            <a href="#" id="os-btn-delete-provider" class="page-title-action" style="background-color: #c0392b; border-color: #96281b; color: #fff;">
-                <span class="dashicons dashicons-trash" style="font-size:14px;width:14px;height:14px;vertical-align:middle;margin-right:3px;"></span>
-                <?php esc_html_e( 'Delete Provider Items', 'olama-stores' ); ?>
-            </a>
-        <?php endif; ?>
+        <div class="os-title-left">
+            <span class="dashicons dashicons-products"></span>
+            <?php esc_html_e( 'Item Registry', 'olama-stores' ); ?>
+        </div>
     </h1>
+
+    <?php if ( OS_Roles::can( 'os_manage_items' ) ): ?>
+        <div class="os-header-actions">
+            <div class="os-header-left">
+                <a href="#" id="os-btn-add-item" class="button button-primary"><?php esc_html_e( 'Add Item', 'olama-stores' ); ?></a>
+                <a href="#" id="os-btn-add-custom" class="button button-outline"><?php esc_html_e( 'Add School Custom', 'olama-stores' ); ?></a>
+                <a href="#" id="os-btn-add-books" class="button button-outline"><?php esc_html_e( 'Add Grade Books', 'olama-stores' ); ?></a>
+                <a href="#" id="os-btn-copy-provider" class="button button-outline">
+                    <?php esc_html_e( 'Copy Provider Items', 'olama-stores' ); ?>
+                </a>
+            </div>
+            <div class="os-header-right" style="margin-left: auto;">
+                <a href="#" id="os-btn-delete-provider" class="button button-outline-danger">
+                    <?php esc_html_e( 'Delete Provider Items', 'olama-stores' ); ?>
+                </a>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <div class="os-filters tablenav top">
         <input type="text" id="os-search-items" class="os-filter-input" placeholder="<?php esc_attr_e( 'Search by name, SKU or barcode…', 'olama-stores' ); ?>">
@@ -403,7 +410,7 @@
             return cls;
         };
 
-        var html = '<table class="wp-list-table widefat striped"><thead><tr>'
+        var html = '<table class="wp-list-table widefat os-items-registry-table"><thead><tr>'
             + '<th class="'+getHdrCls('sku')+'" data-orderby="sku"><?php esc_html_e("SKU","olama-stores");?></th>'
             + '<th class="'+getHdrCls('name')+'" data-orderby="name"><?php esc_html_e("Name","olama-stores");?></th>'
             + '<th class="'+getHdrCls('category_name')+'" data-orderby="category_name"><?php esc_html_e("Category","olama-stores");?></th>'
@@ -425,9 +432,11 @@
                 + '<td>'+item.min_stock_level+'</td>'
                 + '<td>';
             if(olamaStores.caps.manage_items){
-                html += '<a href="#" class="os-edit-item button button-small" data-id="'+item.id+'"><?php esc_html_e("Edit","olama-stores");?></a> '
-                     +  '<a href="#" class="os-duplicate-item button button-small" data-id="'+item.id+'"><?php esc_html_e("Duplicate","olama-stores");?></a> '
-                     +  '<a href="#" class="os-delete-item button button-small button-link-delete" data-id="'+item.id+'"><?php esc_html_e("Delete","olama-stores");?></a>';
+                html += '<div class="os-row-actions">'
+                     +  '<a href="#" class="os-edit-item os-action-btn" data-id="'+item.id+'" title="<?php esc_attr_e("Edit","olama-stores");?>"><span class="dashicons dashicons-edit"></span></a>'
+                     +  '<a href="#" class="os-duplicate-item os-action-btn" data-id="'+item.id+'" title="<?php esc_attr_e("Duplicate","olama-stores");?>"><span class="dashicons dashicons-admin-page"></span></a>'
+                     +  '<a href="#" class="os-delete-item os-action-btn os-action-danger" data-id="'+item.id+'" title="<?php esc_attr_e("Delete","olama-stores");?>"><span class="dashicons dashicons-trash"></span></a>'
+                     +  '</div>';
             }
             html += '</td></tr>';
         });

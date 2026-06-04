@@ -1,20 +1,23 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } ?>
 <div class="wrap os-wrap" id="os-stock-page">
-    <h1 class="os-page-title">
-        <span class="dashicons dashicons-chart-bar"></span>
-        <?php esc_html_e( 'Stock Management', 'olama-stores' ); ?>
+    <h1 class="os-page-title" style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 15px;">
+        <span class="dashicons dashicons-chart-bar" style="float: none; margin: 0;"></span>
+        <span style="float: none; margin: 0;"><?php esc_html_e( 'Stock Management', 'olama-stores' ); ?></span>
+    </h1>
+
+    <div class="os-action-buttons">
         <?php if ( OS_Roles::can( 'os_receive_stock' ) ): ?>
-            <a href="#" id="os-btn-receive-shipment" class="page-title-action"><?php esc_html_e( 'Receive Shipment', 'olama-stores' ); ?></a>
-            <a href="#" id="os-btn-receive-stock" class="page-title-action"><?php esc_html_e( 'Single Receipt', 'olama-stores' ); ?></a>
-            <a href="#" id="os-btn-transfer-stock" class="page-title-action"><?php esc_html_e( 'Transfer Stock', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-receive-shipment" class="os-btn-pill os-btn-green"><span class="dashicons dashicons-download"></span> <?php esc_html_e( 'Receive Shipment', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-receive-stock" class="os-btn-pill os-btn-blue"><span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e( 'Single Receipt', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-transfer-stock" class="os-btn-pill os-btn-purple"><span class="dashicons dashicons-leftright"></span> <?php esc_html_e( 'Transfer Stock', 'olama-stores' ); ?></a>
         <?php endif; ?>
         <?php if ( OS_Roles::can( 'os_adjust_stock' ) ): ?>
-            <a href="#" id="os-btn-adjust-stock" class="page-title-action"><?php esc_html_e( 'Manual Adjustment', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-adjust-stock" class="os-btn-pill os-btn-orange"><span class="dashicons dashicons-edit"></span> <?php esc_html_e( 'Manual Adjustment', 'olama-stores' ); ?></a>
         <?php endif; ?>
         <?php if ( current_user_can( 'manage_options' ) || OS_Roles::can( 'os_manage_settings' ) ): ?>
-            <a href="#" id="os-btn-delete-transactions" class="page-title-action os-btn-danger"><?php esc_html_e( 'Delete Transactions', 'olama-stores' ); ?></a>
+            <a href="#" id="os-btn-delete-transactions" class="os-btn-pill os-btn-red"><span class="dashicons dashicons-trash"></span> <?php esc_html_e( 'Delete Transactions', 'olama-stores' ); ?></a>
         <?php endif; ?>
-    </h1>
+    </div>
 
     <div class="os-filters tablenav top">
         <select id="os-filter-warehouse">
@@ -262,24 +265,29 @@
                 return cls;
             };
 
-            var html='<table class="wp-list-table widefat striped"><thead><tr>'
+            var html='<table class="wp-list-table widefat striped os-table-card"><thead><tr>'
                 +'<th class="'+getHeaderClass('name')+'" data-orderby="name"><?php esc_html_e("Item","olama-stores");?></th>'
                 +'<th class="'+getHeaderClass('sku')+'" data-orderby="sku"><?php esc_html_e("SKU","olama-stores");?></th>'
                 +'<th class="'+getHeaderClass('warehouse_name')+'" data-orderby="warehouse_name"><?php esc_html_e("Warehouse","olama-stores");?></th>'
-                +'<th class="'+getHeaderClass('quantity_on_hand')+'" data-orderby="quantity_on_hand"><?php esc_html_e("On Hand","olama-stores");?></th>'
-                +'<th class="'+getHeaderClass('quantity_reserved')+'" data-orderby="quantity_reserved"><?php esc_html_e("Reserved","olama-stores");?></th>'
-                +'<th class="'+getHeaderClass('quantity_available')+'" data-orderby="quantity_available"><?php esc_html_e("Available","olama-stores");?></th>'
-                +'<th class="'+getHeaderClass('min_stock_level')+'" data-orderby="min_stock_level"><?php esc_html_e("Min Level","olama-stores");?></th></tr></thead><tbody>';
+                +'<th class="os-num-col '+getHeaderClass('quantity_on_hand')+'" data-orderby="quantity_on_hand"><?php esc_html_e("On Hand","olama-stores");?></th>'
+                +'<th class="os-num-col '+getHeaderClass('quantity_reserved')+'" data-orderby="quantity_reserved"><?php esc_html_e("Reserved","olama-stores");?></th>'
+                +'<th class="os-num-col '+getHeaderClass('quantity_available')+'" data-orderby="quantity_available"><?php esc_html_e("Available","olama-stores");?></th>'
+                +'<th class="os-num-col '+getHeaderClass('min_stock_level')+'" data-orderby="min_stock_level"><?php esc_html_e("Min Level","olama-stores");?></th></tr></thead><tbody>';
 
             rows.forEach(function(r){
                 var avail = parseInt(r.quantity_available);
                 var min   = parseInt(r.min_stock_level);
-                var cls   = avail <= 0 ? 'os-row-danger' : (avail <= min ? 'os-row-warning' : '');
-                html+='<tr class="'+cls+'"><td><strong>'+r.name+'</strong><br><small dir="rtl">'+r.name_ar+'</small></td>'
-                    +'<td><code>'+r.sku+'</code></td><td>'+r.warehouse_name+'</td>'
-                    +'<td>'+r.quantity_on_hand+'</td><td>'+r.quantity_reserved+'</td>'
-                    +'<td><strong>'+(avail<0?'<span class="os-badge os-badge-lost">'+avail+'</span>':avail)+'</strong></td>'
-                    +'<td>'+min+'</td></tr>';
+                var badgeCls = avail <= 0 ? 'os-status-badge-red' : (avail <= min ? 'os-status-badge-yellow' : 'os-status-badge-green');
+                var statusText = avail <= 0 ? '<?php esc_html_e("Critical","olama-stores");?>' : (avail <= min ? '<?php esc_html_e("Low","olama-stores");?>' : '<?php esc_html_e("Healthy","olama-stores");?>');
+                var availDisplay = avail < 0 ? '<span class="os-badge os-badge-lost">'+avail+'</span>' : avail;
+                
+                html+='<tr><td class="os-item-name"><strong>'+r.name+'</strong><small dir="rtl">'+r.name_ar+'</small></td>'
+                    +'<td class="os-item-sku"><code>'+r.sku+'</code></td>'
+                    +'<td>'+r.warehouse_name+'</td>'
+                    +'<td class="os-num-col">'+r.quantity_on_hand+'</td>'
+                    +'<td class="os-num-col">'+r.quantity_reserved+'</td>'
+                    +'<td class="os-num-col"><strong>'+availDisplay+'</strong> <span class="os-status-badge '+badgeCls+'">'+statusText+'</span></td>'
+                    +'<td class="os-num-col">'+min+'</td></tr>';
             });
             html+='</tbody></table>';
 
@@ -684,6 +692,111 @@
 </script>
 
 <style>
+/* New Actions Row */
+.os-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+.os-btn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.os-btn-pill:focus {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--os-primary, #007cba);
+    outline: none;
+}
+.os-btn-pill .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.os-btn-green { background: #e6f4ea; color: #1e8e3e; border-color: #ceead6; }
+.os-btn-green:hover { background: #ceead6; color: #137333; }
+.os-btn-blue { background: #e8f0fe; color: #1a73e8; border-color: #d2e3fc; }
+.os-btn-blue:hover { background: #d2e3fc; color: #174ea6; }
+.os-btn-purple { background: #f3e8fd; color: #9334e6; border-color: #e9d2fd; }
+.os-btn-purple:hover { background: #e9d2fd; color: #7627bb; }
+.os-btn-orange { background: #fef7e0; color: #ea8600; border-color: #fce8b2; }
+.os-btn-orange:hover { background: #fce8b2; color: #c26c00; }
+.os-btn-red { background: #fce8e6; color: #d93025; border-color: #fad2cf; }
+.os-btn-red:hover { background: #fad2cf; color: #b31412; }
+
+/* Filters Bar */
+.os-filters.tablenav.top {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    height: auto;
+    clear: both;
+}
+.os-filters select, .os-filters input, .os-filters .button {
+    margin: 0 !important;
+    vertical-align: middle;
+}
+.os-filters label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+
+/* Table Card styling */
+#os-stock-table-wrap {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+table.os-table-card {
+    border: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Typography & Badges */
+.os-item-name strong { font-size: 1.05em; color: #1e293b; display: block; margin-bottom: 2px; }
+.os-item-name small { color: #64748b; font-size: 0.9em; }
+.os-item-sku code { background: #f1f5f9; color: #64748b; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; font-weight: 500; border: 1px solid #e2e8f0; }
+.os-num-col { text-align: end !important; font-variant-numeric: tabular-nums; }
+
+.os-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-inline-start: 6px;
+    vertical-align: middle;
+}
+.os-status-badge-green { background: #dcfce7; color: #166534; }
+.os-status-badge-yellow { background: #fef08a; color: #854d0e; }
+.os-status-badge-red { background: #fee2e2; color: #991b1b; }
+
 .os-row-danger td { background: #fff0f0 !important; }
 .os-row-warning td { background: #fffbeb !important; }
 .os-btn-danger {
