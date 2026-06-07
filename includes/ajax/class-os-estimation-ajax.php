@@ -37,16 +37,18 @@ class OS_Estimation_Ajax {
         // 2. Inventory (Polo, Hoody, Pants)
         $items_table = $wpdb->prefix . 'os_items';
         $stock_table = $wpdb->prefix . 'os_stock';
-        
+        $like_polo = '%' . $wpdb->esc_like('Polo') . '%';
+        $like_hoody = '%' . $wpdb->esc_like('Hoody') . '%';
+        $like_pant = '%' . $wpdb->esc_like('Pant') . '%';
+
+        // Stock is warehouse-wide — do NOT filter by year (items may belong to a different year than current active year)
         $items = $wpdb->get_results( $wpdb->prepare(
             "SELECT i.id, i.name, i.specifications, COALESCE(SUM(s.quantity_on_hand - s.quantity_reserved), 0) as stock
              FROM {$items_table} i
              LEFT JOIN {$stock_table} s ON s.item_id = i.id
-             WHERE (i.academic_year_id = %d OR i.academic_year_id IS NULL OR i.academic_year_id = 0)
-               AND (i.name LIKE '%%Polo%%' OR i.name LIKE '%%Hoody%%' OR i.name LIKE '%%Pant%%' 
-                    OR i.specifications LIKE '%%Polo%%' OR i.specifications LIKE '%%Hoody%%' OR i.specifications LIKE '%%Pant%%')
+             WHERE (i.name LIKE %s OR i.name LIKE %s OR i.name LIKE %s)
              GROUP BY i.id",
-             $year_id
+             $like_polo, $like_hoody, $like_pant
         ) );
         
         $inventory = array( 'Polo' => array(), 'Hoody' => array(), 'Pants' => array() );
@@ -54,25 +56,11 @@ class OS_Estimation_Ajax {
         foreach ( $items as $item ) {
             $specs = json_decode( $item->specifications, true );
             
+            // Determine type from item name (specs contain colors/fabrics, not type keywords)
             $type = '';
-            // Try extracting from specifications first
-            if ( is_array( $specs ) ) {
-                foreach ( $specs as $k => $v ) {
-                    if ( is_string( $v ) ) {
-                        $val = strtolower( $v );
-                        if ( strpos( $val, 'polo' ) !== false ) $type = 'Polo';
-                        elseif ( strpos( $val, 'hoody' ) !== false ) $type = 'Hoody';
-                        elseif ( strpos( $val, 'pant' ) !== false ) $type = 'Pants';
-                    }
-                }
-            }
-            
-            // Fallback to name
-            if ( ! $type ) {
-                if ( stripos( $item->name, 'Polo' ) !== false ) $type = 'Polo';
-                elseif ( stripos( $item->name, 'Hoody' ) !== false ) $type = 'Hoody';
-                elseif ( stripos( $item->name, 'Pant' ) !== false ) $type = 'Pants';
-            }
+            if ( stripos( $item->name, 'Polo' ) !== false )      $type = 'Polo';
+            elseif ( stripos( $item->name, 'Hoody' ) !== false )  $type = 'Hoody';
+            elseif ( stripos( $item->name, 'Pant' ) !== false )   $type = 'Pants';
             
             if ( ! $type ) continue;
             
