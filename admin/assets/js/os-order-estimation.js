@@ -690,7 +690,7 @@
     /* ── Load draft ── */
     $(document).on('click','.os-load-draft-btn',function(){
         const d=DRAFTS[parseInt($(this).data('idx'))]; if(!d)return;
-        Object.entries(d.grades||{}).forEach(([g,v])=>$(`#grade-${g}`).val(v));
+        Object.entries(d.grades||{}).forEach(([g,v])=>$(`#grade-${g.toUpperCase()}`).val(v));
         currentMargin=parseFloat(d.margin)||0;
         $('.os-est-margin-btn').removeClass('active');
         [0,5,10].includes(currentMargin)?$(`.os-est-margin-btn[data-margin="${currentMargin}"]`).addClass('active'):($(`.os-est-margin-btn[data-margin="custom"]`).addClass('active'),$('#os-custom-margin-wrap').show(),$('#os-custom-margin-val').val(currentMargin));

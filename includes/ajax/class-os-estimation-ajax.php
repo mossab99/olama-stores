@@ -175,7 +175,7 @@ class OS_Estimation_Ajax {
         // Sanitize grade values (positive integers only)
         $grades = array();
         foreach ( $grades_raw as $grade => $count ) {
-            $grade_key        = sanitize_key( $grade );
+            $grade_key        = strtoupper( sanitize_key( $grade ) );
             $grades[ $grade_key ] = max( 0, (int) $count );
         }
 
