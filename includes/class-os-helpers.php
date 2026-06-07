@@ -180,4 +180,16 @@ class OS_Helpers
 
         return isset($map[$text]) ? $map[$text] : $text;
     }
+
+    /**
+     * Get asset version using file modification time if file exists.
+     * Prevents browser cache issues after updating CSS/JS files.
+     */
+    public static function asset_version( $relative_path ) {
+        $file_path = OS_PATH . $relative_path;
+        if ( file_exists( $file_path ) ) {
+            return (string) filemtime( $file_path );
+        }
+        return OS_VERSION;
+    }
 }

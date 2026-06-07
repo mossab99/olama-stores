@@ -109,14 +109,14 @@ class OS_Admin
             'olama-stores-admin',
             OS_URL . 'admin/assets/css/os-admin.css',
             array(),
-            OS_VERSION
+            OS_Helpers::asset_version( 'admin/assets/css/os-admin.css' )
         );
 
         wp_enqueue_script(
             'olama-stores-admin',
             OS_URL . 'admin/assets/js/os-admin.js',
             array('jquery', 'wp-api-fetch', 'wp-url'),
-            OS_VERSION,
+            OS_Helpers::asset_version( 'admin/assets/js/os-admin.js' ),
             false
         );
 
@@ -126,7 +126,7 @@ class OS_Admin
                 'os-student-size-reg',
                 OS_URL . 'admin/assets/js/os-student-size-registration.js',
                 array( 'jquery' ),
-                OS_VERSION,
+                OS_Helpers::asset_version( 'admin/assets/js/os-student-size-registration.js' ),
                 true
             );
         }

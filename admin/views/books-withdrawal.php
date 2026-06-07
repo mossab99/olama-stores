@@ -493,7 +493,7 @@ wp_enqueue_script(
     'os-books-withdrawal',
     OS_URL . 'admin/assets/js/os-books-withdrawal.js',
     array( 'jquery', 'wp-api-fetch' ),
-    OS_VERSION,
+    OS_Helpers::asset_version( 'admin/assets/js/os-books-withdrawal.js' ),
     true
 );
 
@@ -501,6 +501,6 @@ wp_enqueue_style(
     'os-books-withdrawal',
     OS_URL . 'admin/assets/css/os-books-withdrawal.css',
     array(),
-    OS_VERSION
+    OS_Helpers::asset_version( 'admin/assets/css/os-books-withdrawal.css' )
 );
 ?>

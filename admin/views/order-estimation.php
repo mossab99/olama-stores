@@ -689,7 +689,7 @@ wp_enqueue_script(
     'os-order-estimation',
     OS_URL . 'admin/assets/js/os-order-estimation.js',
     array( 'jquery' ),
-    OS_VERSION,
+    OS_Helpers::asset_version( 'admin/assets/js/os-order-estimation.js' ),
     true
 );
 // Enqueue the estimation CSS
@@ -697,7 +697,7 @@ wp_enqueue_style(
     'os-order-estimation',
     OS_URL . 'admin/assets/css/os-order-estimation.css',
     array(),
-    OS_VERSION
+    OS_Helpers::asset_version( 'admin/assets/css/os-order-estimation.css' )
 );
 ?>
 <style>
