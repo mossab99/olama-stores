@@ -930,6 +930,223 @@
     /* ── Print ── */
     $('#os-print-btn').on('click', ()=>window.print());
 
+    /* ── Print Supplier Report ── */
+    $(document).on('click', '#os-print-supplier-report-btn', function () {
+        const schoolNameAr = RAW.schoolDetails?.school_name_ar || 'أكاديمية علماء المستقبل';
+        const schoolNameEn = RAW.schoolDetails?.school_name_en || 'Future Scientists School';
+        const supplierName = supplierReportData?.active_supplier || '—';
+        const supplierDetails = supplierReportData?.active_supplier_details || {};
+        
+        const reportTypeName = $('#os-supplier-report-type option:selected').text();
+        
+        const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        
+        // Clone the table wrap to clean it up for print
+        const $tableClone = $('#os-supplier-table-wrap').clone();
+        
+        // Replace input fields with their typed values
+        $tableClone.find('.os-manual-qty').each(function () {
+            const val = $(this).val().trim();
+            $(this).replaceWith(`<span style="font-weight:bold;">${val !== '' ? val : '0'}</span>`);
+        });
+        
+        // Remove Apply Manual Quantities button area
+        $tableClone.find('#os-apply-manual-btn').closest('div').remove();
+        
+        const tableHtml = $tableClone.html();
+        
+        const printWindow = window.open('', '_blank', 'width=850,height=700');
+        if (!printWindow) {
+            alert('Popup blocker active. Please allow popups to print.');
+            return;
+        }
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <title>تقرير طلبية المورد - ${supplierName}</title>
+                <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+                        background: #fff;
+                        color: #1f2937;
+                        margin: 0;
+                        padding: 30px;
+                        direction: rtl;
+                    }
+                    .header-container {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        border-bottom: 3px solid #e8920a;
+                        padding-bottom: 15px;
+                        margin-bottom: 20px;
+                    }
+                    .school-info {
+                        text-align: right;
+                    }
+                    .school-name-ar {
+                        font-size: 22px;
+                        font-weight: 800;
+                        color: #e8920a;
+                        margin: 0 0 5px 0;
+                    }
+                    .school-name-en {
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #6b7280;
+                        margin: 0;
+                    }
+                    .report-meta {
+                        text-align: left;
+                    }
+                    .report-title {
+                        font-size: 22px;
+                        font-weight: 800;
+                        color: #1f2937;
+                        margin: 0 0 10px 0;
+                    }
+                    .meta-row {
+                        font-size: 13px;
+                        color: #4b5563;
+                        margin-bottom: 4px;
+                    }
+                    .meta-row strong {
+                        color: #111827;
+                    }
+                    .details-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin-bottom: 30px;
+                        background: #f9fafb;
+                        padding: 15px;
+                        border-radius: 8px;
+                        border: 1px solid #e5e7eb;
+                    }
+                    .details-block h3 {
+                        margin: 0 0 8px 0;
+                        font-size: 15px;
+                        color: #e8920a;
+                        border-bottom: 1px solid #fed7aa;
+                        padding-bottom: 4px;
+                    }
+                    .details-row {
+                        font-size: 13px;
+                        margin-bottom: 6px;
+                    }
+                    .details-row strong {
+                        color: #111827;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 30px;
+                        font-size: 13px;
+                    }
+                    th {
+                        background-color: #f3f4f6;
+                        color: #111827;
+                        font-weight: 700;
+                        border: 1px solid #d1d5db;
+                        padding: 10px 8px;
+                        text-align: center;
+                    }
+                    td {
+                        border: 1px solid #e5e7eb;
+                        padding: 10px 8px;
+                        text-align: center;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9fafb;
+                    }
+                    .size-badge {
+                        background: #f3f4f6;
+                        border: 1px solid #d1d5db;
+                        border-radius: 4px;
+                        padding: 2px 8px;
+                        font-weight: bold;
+                    }
+                    .total-col {
+                        font-weight: bold;
+                        background-color: #e6f4ea !important;
+                    }
+                    .no-print-btn-wrap {
+                        margin-bottom: 25px;
+                        text-align: left;
+                    }
+                    .print-btn {
+                        background-color: #e8920a;
+                        color: #fff;
+                        border: none;
+                        padding: 12px 24px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-family: inherit;
+                        box-shadow: 0 4px 6px rgba(232, 146, 10, 0.15);
+                    }
+                    .print-btn:hover {
+                        background-color: #d18105;
+                    }
+                    @media print {
+                        .no-print-btn-wrap {
+                            display: none;
+                        }
+                        body {
+                            padding: 0;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="no-print-btn-wrap">
+                    <button class="print-btn" onclick="window.print();">طباعة التقرير / Print Report</button>
+                </div>
+                
+                <div class="header-container">
+                    <div class="school-info">
+                        <h1 class="school-name-ar">${schoolNameAr}</h1>
+                        <p class="school-name-en">${schoolNameEn}</p>
+                    </div>
+                    <div class="report-meta">
+                        <h2 class="report-title">تقرير طلبية المورد</h2>
+                        <div class="meta-row">نوع التقرير: <strong>${reportTypeName}</strong></div>
+                        <div class="meta-row">تاريخ الطباعة: <strong>${dateStr} ${timeStr}</strong></div>
+                        <div class="meta-row">العام الدراسي: <strong>${RAW.activeYear || '—'}</strong></div>
+                    </div>
+                </div>
+                
+                <div class="details-grid">
+                    <div class="details-block">
+                        <h3>تفاصيل المورد (Supplier Details)</h3>
+                        <div class="details-row">اسم الشركة: <strong>${supplierName}</strong></div>
+                        <div class="details-row">مسؤول الاتصال: <strong>${supplierDetails.contact_person || '—'}</strong></div>
+                        <div class="details-row">رقم الهاتف: <strong>${supplierDetails.mobile_contact || '—'}</strong></div>
+                        <div class="details-row">الموقع: <strong>${supplierDetails.location || '—'}</strong></div>
+                    </div>
+                    <div class="details-block">
+                        <h3>تفاصيل المدرسة (School Details)</h3>
+                        <div class="details-row">المؤسسة: <strong>${schoolNameAr}</strong></div>
+                        <div class="details-row">الأكاديمية: <strong>${schoolNameEn}</strong></div>
+                        <div class="details-row">إدارة المستودعات المدرسية</div>
+                    </div>
+                </div>
+                
+                <div class="report-body">
+                    ${tableHtml}
+                </div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    });
+
     /* ── Save draft ── */
     $('#os-save-draft-btn').on('click', function () {
         const name = $('#os-draft-name').val().trim();

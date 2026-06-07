@@ -385,14 +385,18 @@ $all_custom_models = $wpdb->get_results(
                             <option value="8">8. Actual Scan → Inventory with Cost</option>
                         </select>
                     </div>
-                    <div class="os-est-card-header-actions">
+                    <div class="os-est-card-header-actions" style="display: flex; gap: 8px;">
                         <button class="button" id="os-export-supplier-csv-btn">
                             <span class="dashicons dashicons-media-spreadsheet"></span>
                             <?php esc_html_e( 'Export CSV', 'olama-stores' ); ?>
                         </button>
-                        <button class="button button-primary" id="os-export-supplier-excel-btn">
+                        <button class="button" id="os-export-supplier-excel-btn">
                             <span class="dashicons dashicons-media-spreadsheet"></span>
                             <?php esc_html_e( 'Export Excel', 'olama-stores' ); ?>
+                        </button>
+                        <button class="button button-primary" id="os-print-supplier-report-btn">
+                            <span class="dashicons dashicons-printer"></span>
+                            <?php esc_html_e( 'Print Report', 'olama-stores' ); ?>
                         </button>
                     </div>
                 </div>
@@ -652,6 +656,13 @@ $all_custom_models = $wpdb->get_results(
 
 </div><!-- /#os-estimation-page -->
 
+<?php
+$school_settings = get_option( 'olama_school_settings', array() );
+$school_details = array(
+    'school_name_ar' => $school_settings['school_name_ar'] ?? 'أكاديمية علماء المستقبل',
+    'school_name_en' => $school_settings['school_name_en'] ?? 'Future Scientists School',
+);
+?>
 <!-- Hidden data for JS -->
 <script id="os-estimation-data" type="application/json">
 <?php echo wp_json_encode( array(
@@ -672,6 +683,7 @@ $all_custom_models = $wpdb->get_results(
             'calculation_type'  => $m->calculation_type ?? 'auto',
         );
     }, $all_custom_models ),
+    'schoolDetails'     => $school_details,
 ) ); ?>
 </script>
 

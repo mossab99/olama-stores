@@ -168,6 +168,12 @@ class OS_Estimation_Ajax {
             'inventory'              => $inventory,
             'supplier_pricing'       => $supplier_pricing,
             'active_supplier'        => $active_provider ? $active_provider->company_name : null,
+            'active_supplier_details'=> $active_provider ? array(
+                'company_name'   => $active_provider->company_name,
+                'mobile_contact' => $active_provider->mobile_contact,
+                'location'       => $active_provider->location,
+                'contact_person' => $active_provider->contact_person,
+            ) : null,
             'qualifying_categories'  => $qualifying_categories,
         ) );
     }
