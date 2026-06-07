@@ -607,13 +607,28 @@
                     const unitCostStr = item.unitCost === null ? 'N/A' : parseFloat(item.unitCost).toFixed(2);
                     const totalCostStr = item.totalCost === null ? 'N/A' : parseFloat(item.totalCost).toFixed(2);
                     
+                    let qtyHtml = '';
+                    if (item.isManual) {
+                        const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                        if (config.useInventoryDeduction) {
+                            qtyHtml = `<div style="display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px;">
+                                <input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${savedVal}" style="width:65px; text-align:center; border:1px solid #d97706; border-radius:4px; padding:2px 4px;" placeholder="Req">
+                                <span style="font-size:10px; color:#6b7280; white-space:nowrap;">Stock: ${item.stock} | Net: <strong style="color:#d63638;">${item.net}</strong></span>
+                            </div>`;
+                        } else {
+                            qtyHtml = `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${savedVal}" style="width:65px; text-align:center; border:1px solid #d97706; border-radius:4px; padding:2px 4px;">`;
+                        }
+                    } else {
+                        qtyHtml = item.net;
+                    }
+
                     html += `<tr>
                         ${sizeLabel}
-                        <td style="text-align:center; font-weight:600;">${type}</td>
-                        <td style="text-align:center;">${item.net}</td>
-                        <td style="text-align:center;">${unitCostStr}</td>
-                        <td style="text-align:center;">${totalCostStr}</td>
-                        <td style="text-align:center;">${priceStatus}</td>
+                        <td style="text-align:center; font-weight:600; vertical-align:middle;">${type}</td>
+                        <td style="text-align:center; vertical-align:middle;">${qtyHtml}</td>
+                        <td style="text-align:center; vertical-align:middle;">${unitCostStr}</td>
+                        <td style="text-align:center; vertical-align:middle;">${totalCostStr}</td>
+                        <td style="text-align:center; vertical-align:middle;">${priceStatus}</td>
                     </tr>`;
                 });
             });
