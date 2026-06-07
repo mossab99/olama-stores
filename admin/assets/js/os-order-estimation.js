@@ -6,6 +6,41 @@
     const NONCE    = RAW.nonce   || '';
     let   DRAFTS   = RAW.savedDrafts || [];
 
+    // ── Custom Model selection state ─────────────────────────────────────────────
+    // Tracks which custom model IDs the user has toggled on (survey-enabled only).
+    // Initialised from the PHP-rendered chips (all survey models start selected).
+    const ALL_MODELS = RAW.allCustomModels || []; // [{id, name, include_in_survey, calculation_type}]
+    let selectedModelIds = ALL_MODELS
+        .filter(m => m.include_in_survey === 1)
+        .map(m => m.id);
+
+    // ── Manual Calculation state ───────────────────────────────────────────────────
+    // Set of model names that use manual entry instead of auto calculation.
+    let MANUAL_MODELS = new Set(
+        ALL_MODELS.filter(m => m.calculation_type === 'manual').map(m => m.name)
+    );
+    // Stores user-entered quantities: { 'Sport Suit': { '22': 10, '24': 20 } }
+    let manualQuantities = {};
+
+    // Chip toggle — only survey chips (not disabled ones) are clickable
+    $(document).on('click', '.os-cat-chip-survey', function () {
+        const $chip  = $(this);
+        const $cb    = $chip.find('.os-cat-selector');
+        const modelId  = parseInt($cb.data('cat-id'));
+        const isNowChecked = !$cb.prop('checked');
+        $cb.prop('checked', isNowChecked);
+        $chip.toggleClass('os-cat-deselected', !isNowChecked);
+
+        if (isNowChecked) {
+            if (!selectedModelIds.includes(modelId)) selectedModelIds.push(modelId);
+        } else {
+            selectedModelIds = selectedModelIds.filter(id => id !== modelId);
+        }
+
+        // Reset cached supplier data so next calculate re-fetches with new filter
+        supplierReportData = null;
+    });
+
     const DEFAULT_DISTRIBUTIONS = {
         KG1:   { 22:33.33, 24:66.67 },
         KG2:   { 24:14.29, 26:57.14, 28:28.57 },
@@ -272,9 +307,20 @@
                 action: 'os_get_supplier_report_data',
                 nonce : NONCE,
                 year_id: activeYearId,
+                selected_model_ids: JSON.stringify(selectedModelIds),
             }, function (res) {
                 if (res.success) {
                     supplierReportData = res.data;
+                    // Update dynamic TYPES from what PHP returned
+                    if (res.data.qualifying_categories && res.data.qualifying_categories.length) {
+                        SupplierSummaryService.TYPES = res.data.qualifying_categories.map(c => c.name);
+                        // Rebuild MANUAL_MODELS from server response (authoritative)
+                        MANUAL_MODELS = new Set(
+                            res.data.qualifying_categories
+                                .filter(c => c.calculation_type === 'manual')
+                                .map(c => c.name)
+                        );
+                    }
                 }
                 if (callback) callback();
             }).fail(function () {
@@ -403,11 +449,21 @@
 
     /* ── Items breakdown ── */
     function renderItemsBreakdown(gt) {
-        const items = [{label:'Polo',cls:'os-item-polo',icon:'👕'},{label:'Hoody',cls:'os-item-hoody',icon:'🧥'},{label:'Pants',cls:'os-item-pants',icon:'👖'}];
+        // Build dynamic item list from the qualifying models returned by PHP,
+        // or fall back to the user-selected models if AJAX hasn't run yet.
+        const types = SupplierSummaryService.TYPES.length
+            ? SupplierSummaryService.TYPES
+            : selectedModelIds.map(id => {
+                const m = ALL_MODELS.find(x => x.id === id);
+                return m ? m.name : 'Model ' + id;
+            });
+
+        const icons = ['👕','🧥','👖','🎽','🧣','🧤','👟','🎒'];
         let html = '<div class="os-items-grid">';
-        items.forEach(item => {
-            let total=0;
-            html += `<div class="os-item-card ${item.cls}"><div class="os-item-card-header">${item.icon} ${item.label}</div><div class="os-item-card-body">`;
+        types.forEach((label, idx) => {
+            let total = 0;
+            const icon = icons[idx] || '📦';
+            html += `<div class="os-item-card"><div class="os-item-card-header">${icon} ${label}</div><div class="os-item-card-body">`;
             ALL_SIZES.forEach(sz => {
                 if (!gt[sz]) return;
                 total += gt[sz];
@@ -424,7 +480,9 @@
 
     /* ── Supplier Summary Calculation Service ── */
     const SupplierSummaryService = {
-        TYPES: ['Polo', 'Hoody', 'Pants'],
+        // TYPES is dynamic — populated from qualifying_categories returned by PHP.
+        // Falls back to survey-marked models from allCustomModels if PHP hasn't responded yet.
+        TYPES: ALL_MODELS.filter(m => m.include_in_survey === 1).map(m => m.name),
         
         getReportConfig: function(reportType) {
             return {
@@ -446,9 +504,19 @@
                 const rowData = { size: sz, items: {}, rowTotalCost: 0, hasMissingPrice: false };
 
                 this.TYPES.forEach(type => {
-                    const reqQty = baseQty;
+                    const isManual = MANUAL_MODELS.has(type);
+                    let reqQty;
+                    if (isManual) {
+                        // Use manually entered value (null = not yet entered)
+                        const entered = manualQuantities[type]?.[sz];
+                        reqQty = (entered !== undefined && entered !== '') ? parseInt(entered) : null;
+                    } else {
+                        reqQty = baseQty;
+                    }
+
                     const stockQty = supplierReportData?.inventory?.[type]?.[sz] || 0;
-                    const netQty = config.useInventoryDeduction ? Math.max(0, reqQty - stockQty) : reqQty;
+                    const effectiveReq = reqQty ?? 0;
+                    const netQty = config.useInventoryDeduction ? Math.max(0, effectiveReq - stockQty) : effectiveReq;
                     
                     let unitCost = null;
                     let totalCost = null;
@@ -465,14 +533,16 @@
                     }
 
                     rowData.items[type] = {
-                        req: reqQty,
+                        req: reqQty,          // null for un-entered manual values
+                        effectiveReq,         // 0 for null manuals
                         stock: stockQty,
                         net: netQty,
                         unitCost: unitCost,
-                        totalCost: totalCost
+                        totalCost: totalCost,
+                        isManual: isManual,
                     };
 
-                    totals.req += reqQty;
+                    totals.req += effectiveReq;
                     totals.stock += stockQty;
                     totals.net += netQty;
                     if (totalCost !== null) totals.cost += totalCost;
@@ -493,6 +563,7 @@
     function renderSupplierTable(gt) {
         const reportType = parseInt($('#os-supplier-report-type').val()) || 1;
         const config = SupplierSummaryService.getReportConfig(reportType);
+        const TYPES  = SupplierSummaryService.TYPES;
         
         if (!config.useActualScans && Object.keys(gt).length === 0) {
             $('#os-no-supplier-msg').show();
@@ -504,7 +575,19 @@
         $('#os-supplier-table-wrap').show();
 
         const data = SupplierSummaryService.calculateData(gt, reportType);
+        const hasManual = MANUAL_MODELS.size > 0;
         let html = '';
+
+        // ── "Apply Manual Quantities" button (shown only when manual models exist)
+        if (hasManual) {
+            html += `<div style="margin-bottom:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" id="os-apply-manual-btn" class="button button-primary" style="display:flex;align-items:center;gap:6px;">
+                    <span class="dashicons dashicons-saved" style="line-height:1.8;"></span>
+                    Apply Manual Quantities
+                </button>
+                <span style="font-size:12px; color:#6b7280;">Fill in the ✏️ Manual columns below, then click Apply to recalculate totals.</span>
+            </div>`;
+        }
 
         if (config.isCostBased && data.supplier) {
             html += `<div style="margin-bottom: 12px; font-weight: 600;">Supplier: <span style="color:var(--os-primary);">${data.supplier}</span></div>`;
@@ -516,9 +599,10 @@
             html += '<th style="text-align:center;">Item</th><th style="text-align:center;">Qty</th><th style="text-align:center;">Unit Cost</th><th style="text-align:center;">Total Cost</th><th style="text-align:center;">Price Status</th></tr></thead><tbody>';
             
             data.rows.forEach(row => {
-                SupplierSummaryService.TYPES.forEach((type, idx) => {
+                TYPES.forEach((type, idx) => {
                     const item = row.items[type];
-                    const sizeLabel = idx === 0 ? `<td rowspan="3" style="text-align:center; vertical-align:middle; border-right:1px solid #ccc;"><span class="size-badge">${row.size}</span></td>` : '';
+                    if (!item) return; // guard against missing types
+                    const sizeLabel = idx === 0 ? `<td rowspan="${TYPES.length}" style="text-align:center; vertical-align:middle; border-right:1px solid #ccc;"><span class="size-badge">${row.size}</span></td>` : '';
                     const priceStatus = item.unitCost === null ? '<span style="color:#d63638; font-weight:bold;">Missing</span>' : '<span style="color:#198754;">OK</span>';
                     const unitCostStr = item.unitCost === null ? 'N/A' : parseFloat(item.unitCost).toFixed(2);
                     const totalCostStr = item.totalCost === null ? 'N/A' : parseFloat(item.totalCost).toFixed(2);
@@ -543,43 +627,113 @@
             </tr>`;
         } else {
             if (!config.useInventoryDeduction) {
-                html += '<th style="text-align:center;">Polo</th><th style="text-align:center;">Hoody</th><th style="text-align:center;">Pants</th><th style="text-align:center;">Total Units</th></tr></thead><tbody>';
-                data.rows.forEach(row => {
-                    const q = row.items['Polo'].req;
-                    html += `<tr><td style="text-align:center;"><span class="size-badge">${row.size}</span></td><td style="text-align:center;">${q}</td><td style="text-align:center;">${q}</td><td style="text-align:center;">${q}</td><td class="total-col" style="text-align:center; font-weight:bold;">${q*3}</td></tr>`;
+                // Simple view: one column per model, same qty for each (size-based)
+                TYPES.forEach(type => {
+                    const isManual = MANUAL_MODELS.has(type);
+                    html += `<th style="text-align:center;">${type}${isManual ? ' <span title="Manual entry" style="color:#92400e;">✏️</span>' : ''}</th>`;
                 });
-                html += `<tr style="font-weight:800;background:#e6f4ea;"><td style="text-align:center;"><strong>GRAND TOTAL</strong></td><td colspan="3"></td><td class="total-col" style="text-align:center;">${data.totals.req} units</td></tr>`;
+                html += '<th style="text-align:center; background:#e6f4ea;">Total Units</th></tr></thead><tbody>';
+                data.rows.forEach(row => {
+                    const firstAutoType = TYPES.find(t => !MANUAL_MODELS.has(t));
+                    const autoQ = firstAutoType && row.items[firstAutoType] ? row.items[firstAutoType].effectiveReq : 0;
+                    let rowTotal = 0;
+                    html += `<tr><td style="text-align:center;"><span class="size-badge">${row.size}</span></td>`;
+                    TYPES.forEach(type => {
+                        const item = row.items[type] || {};
+                        if (MANUAL_MODELS.has(type)) {
+                            const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                            html += `<td style="text-align:center; background:#fffbeb;">`;
+                            html += `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${savedVal}" style="width:65px; text-align:center; border:1px solid #d97706; border-radius:4px; padding:2px 4px;"></td>`;
+                            rowTotal += savedVal !== '' ? parseInt(savedVal) || 0 : 0;
+                        } else {
+                            html += `<td style="text-align:center;">${item.effectiveReq ?? autoQ}</td>`;
+                            rowTotal += item.effectiveReq ?? autoQ;
+                        }
+                    });
+                    html += `<td style="text-align:center; font-weight:bold; background:#e6f4ea;">${rowTotal}</td></tr>`;
+                });
+                // Grand total row
+                let grandTotal = 0;
+                html += `<tr style="font-weight:800;background:#dcfce7;"><td style="text-align:center;"><strong>GRAND TOTAL</strong></td>`;
+                TYPES.forEach(type => {
+                    if (MANUAL_MODELS.has(type)) {
+                        const typeTotal = Object.values(manualQuantities[type] || {}).reduce((a,b) => a + (parseInt(b)||0), 0);
+                        grandTotal += typeTotal;
+                        html += `<td style="text-align:center; background:#fffbeb; font-weight:700; color:#92400e;">${typeTotal || '—'}</td>`;
+                    } else {
+                        const typeTotal = data.rows.reduce((s, r) => s + (r.items[type]?.effectiveReq || 0), 0);
+                        grandTotal += typeTotal;
+                        html += `<td style="text-align:center;">${typeTotal}</td>`;
+                    }
+                });
+                html += `<td class="total-col" style="text-align:center; background:#dcfce7; color:var(--est-success); font-size:16px;"><strong>${grandTotal}</strong></td></tr>`;
             } else {
-                html += '<th colspan="3" style="text-align:center; border-left:2px solid #ccc;">Polo (Req | Stock | Net)</th>' + 
-                        '<th colspan="3" style="text-align:center; border-left:2px solid #ccc;">Hoody (Req | Stock | Net)</th>' + 
-                        '<th colspan="3" style="text-align:center; border-left:2px solid #ccc;">Pants (Req | Stock | Net)</th></tr></thead><tbody>';
+                // Stock-deduction view: Req | Stock | Net per model
+                TYPES.forEach(type => {
+                    html += `<th colspan="3" style="text-align:center; border-left:2px solid #ccc;">${type} (Req | Stock | Net)</th>`;
+                });
+                html += '</tr></thead><tbody>';
+
+                // Per-model totals
+                const modelTotals = {};
+                TYPES.forEach(t => { modelTotals[t] = { req: 0, stk: 0, net: 0 }; });
+
                 data.rows.forEach(r => {
                     html += `<tr><td style="text-align:center;"><span class="size-badge">${r.size}</span></td>`;
-                    SupplierSummaryService.TYPES.forEach(type => {
-                        const it = r.items[type];
-                        html += `<td style="text-align:center; border-left:2px solid #ccc;">${it.req}</td><td style="text-align:center;">${it.stock}</td><td style="text-align:center; color:#d63638; font-weight:bold;">${it.net}</td>`;
+                    TYPES.forEach(type => {
+                        const it = r.items[type] || { req: 0, stock: 0, net: 0 };
+                        if (MANUAL_MODELS.has(type)) {
+                            // Manual model: show input for req, auto-calc net
+                            const savedVal = manualQuantities[type]?.[r.size] ?? '';
+                            const effectiveReq = savedVal !== '' ? parseInt(savedVal) || 0 : 0;
+                            const net = Math.max(0, effectiveReq - (it.stock || 0));
+                            if (modelTotals[type]) {
+                                modelTotals[type].req += effectiveReq;
+                                modelTotals[type].stk += it.stock || 0;
+                                modelTotals[type].net += net;
+                            }
+                            html += `<td style="text-align:center; border-left:2px solid #ccc; background:#fffbeb;">`;
+                            html += `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${r.size}" value="${savedVal}" style="width:55px;text-align:center;border:1px solid #d97706;border-radius:4px;padding:1px 3px;"></td>`;
+                            html += `<td style="text-align:center;">${it.stock}</td>`;
+                            html += `<td style="text-align:center; color:#d63638; font-weight:bold;">${net}</td>`;
+                        } else {
+                            if (modelTotals[type]) {
+                                modelTotals[type].req += it.effectiveReq || 0;
+                                modelTotals[type].stk += it.stock || 0;
+                                modelTotals[type].net += it.net || 0;
+                            }
+                            html += `<td style="text-align:center; border-left:2px solid #ccc;">${it.effectiveReq}</td><td style="text-align:center;">${it.stock}</td><td style="text-align:center; color:#d63638; font-weight:bold;">${it.net}</td>`;
+                        }
                     });
                     html += `</tr>`;
                 });
-                
-                let tp = {req:0, stk:0, net:0}, th = {req:0, stk:0, net:0}, tpa = {req:0, stk:0, net:0};
-                data.rows.forEach(r => {
-                    tp.req += r.items.Polo.req; tp.stk += r.items.Polo.stock; tp.net += r.items.Polo.net;
-                    th.req += r.items.Hoody.req; th.stk += r.items.Hoody.stock; th.net += r.items.Hoody.net;
-                    tpa.req += r.items.Pants.req; tpa.stk += r.items.Pants.stock; tpa.net += r.items.Pants.net;
-                });
 
-                html += `<tr style="font-weight:800;background:#e6f4ea;"><td style="text-align:center;"><strong>GRAND TOTAL</strong></td>
-                    <td style="text-align:center; border-left:2px solid #ccc;">${tp.req}</td><td style="text-align:center;">${tp.stk}</td><td style="text-align:center; color:#d63638;">${tp.net}</td>
-                    <td style="text-align:center; border-left:2px solid #ccc;">${th.req}</td><td style="text-align:center;">${th.stk}</td><td style="text-align:center; color:#d63638;">${th.net}</td>
-                    <td style="text-align:center; border-left:2px solid #ccc;">${tpa.req}</td><td style="text-align:center;">${tpa.stk}</td><td style="text-align:center; color:#d63638;">${tpa.net}</td>
-                </tr>`;
+                html += `<tr style="font-weight:800;background:#e6f4ea;"><td style="text-align:center;"><strong>GRAND TOTAL</strong></td>`;
+                TYPES.forEach(type => {
+                    const t = modelTotals[type] || { req: 0, stk: 0, net: 0 };
+                    html += `<td style="text-align:center; border-left:2px solid #ccc;">${t.req}</td><td style="text-align:center;">${t.stk}</td><td style="text-align:center; color:#d63638;">${t.net}</td>`;
+                });
+                html += `</tr>`;
             }
         }
         
         html += `</tbody></table>`;
         $('#os-supplier-table-wrap').html(html);
     }
+
+    /* ── Apply Manual Quantities handler ── */
+    $(document).on('click', '#os-apply-manual-btn', function () {
+        // Read all manual inputs from the table, store in manualQuantities
+        $('#os-supplier-table-wrap .os-manual-qty').each(function () {
+            const modelName = $(this).data('model');
+            const size      = String($(this).data('size'));
+            const val       = $(this).val().trim();
+            if (!manualQuantities[modelName]) manualQuantities[modelName] = {};
+            manualQuantities[modelName][size] = val;
+        });
+        // Re-render the table with updated values (no AJAX needed)
+        renderSupplierTable(lastGrandTotal);
+    });
 
     /* ── Charts ── */
     function renderCharts(perGrade, gt) {
@@ -607,8 +761,31 @@
         downloadCSV(sup ? buildSupplierCSV() : buildGrandCSV(), sup ? 'supplier.csv' : 'estimation.csv');
     });
     function buildGrandCSV() {
-        const r=[['Size','Base Qty','Final Qty','Polo','Hoody','Pants']];
-        ALL_SIZES.forEach(sz=>{ if(!lastGrandTotal[sz])return; const f=lastGrandTotal[sz],b=Math.round(f/(1+currentMargin/100)); r.push([sz,b,f,f,f,f]); });
+        const types = SupplierSummaryService.TYPES.length
+            ? SupplierSummaryService.TYPES
+            : selectedModelIds.map(id => {
+                const m = ALL_MODELS.find(x => x.id === id);
+                return m ? m.name : 'Model ' + id;
+            });
+        
+        const headers = ['Size', 'Base Qty', 'Final Qty', ...types];
+        const r = [headers];
+        
+        ALL_SIZES.forEach(sz => {
+            if (!lastGrandTotal[sz]) return;
+            const f = lastGrandTotal[sz];
+            const b = Math.round(f / (1 + currentMargin / 100));
+            const row = [sz, b, f];
+            types.forEach(type => {
+                if (MANUAL_MODELS.has(type)) {
+                    const savedVal = manualQuantities[type]?.[sz] ?? '';
+                    row.push(savedVal !== '' ? parseInt(savedVal) || 0 : 0);
+                } else {
+                    row.push(f);
+                }
+            });
+            r.push(row);
+        });
         return r;
     }
     function buildSupplierCSV() {
@@ -627,6 +804,7 @@
             data.rows.forEach(row => {
                 SupplierSummaryService.TYPES.forEach((type, idx) => {
                     const item = row.items[type];
+                    if (!item) return;
                     const unitCostStr = item.unitCost === null ? 'N/A' : parseFloat(item.unitCost).toFixed(2);
                     const totalCostStr = item.totalCost === null ? 'N/A' : parseFloat(item.totalCost).toFixed(2);
                     const statusStr = item.unitCost === null ? 'Missing' : 'OK';
@@ -636,23 +814,86 @@
             r.push(['GRAND TOTAL', '', data.totals.net, '', parseFloat(data.totals.cost).toFixed(2), data.totals.missingPrices > 0 ? data.totals.missingPrices + ' Missing' : 'All OK']);
         } else {
             if (!config.useInventoryDeduction) {
-                r.push(['Size','Polo','Hoody','Pants','Total Units']);
+                r.push(['Size', ...SupplierSummaryService.TYPES, 'Total Units']);
                 data.rows.forEach(row => {
-                    const q = row.items['Polo'].req;
-                    r.push([row.size, q, q, q, q * 3]);
+                    const firstAutoType = SupplierSummaryService.TYPES.find(t => !MANUAL_MODELS.has(t));
+                    const autoQ = firstAutoType && row.items[firstAutoType] ? row.items[firstAutoType].effectiveReq : 0;
+                    const rowData = [row.size];
+                    let rowTotal = 0;
+                    SupplierSummaryService.TYPES.forEach(type => {
+                        const item = row.items[type] || {};
+                        if (MANUAL_MODELS.has(type)) {
+                            const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                            const val = savedVal !== '' ? parseInt(savedVal) || 0 : 0;
+                            rowData.push(val);
+                            rowTotal += val;
+                        } else {
+                            const val = item.effectiveReq ?? autoQ;
+                            rowData.push(val);
+                            rowTotal += val;
+                        }
+                    });
+                    rowData.push(rowTotal);
+                    r.push(rowData);
                 });
-                r.push(['GRAND TOTAL','','','', data.totals.req + ' units']);
+                
+                const totalRow = ['GRAND TOTAL'];
+                let grandTotal = 0;
+                SupplierSummaryService.TYPES.forEach(type => {
+                    if (MANUAL_MODELS.has(type)) {
+                        const typeTotal = Object.values(manualQuantities[type] || {}).reduce((a,b) => a + (parseInt(b)||0), 0);
+                        grandTotal += typeTotal;
+                        totalRow.push(typeTotal);
+                    } else {
+                        const typeTotal = data.rows.reduce((s, r) => s + (r.items[type]?.effectiveReq || 0), 0);
+                        grandTotal += typeTotal;
+                        totalRow.push(typeTotal);
+                    }
+                });
+                totalRow.push(grandTotal);
+                r.push(totalRow);
             } else {
-                r.push(['Size', 'Polo Req', 'Polo Stock', 'Polo Net', 'Hoody Req', 'Hoody Stock', 'Hoody Net', 'Pants Req', 'Pants Stock', 'Pants Net']);
-                let tp = {req:0, stk:0, net:0}, th = {req:0, stk:0, net:0}, tpa = {req:0, stk:0, net:0};
-                data.rows.forEach(row => {
-                    const p = row.items.Polo, h = row.items.Hoody, pa = row.items.Pants;
-                    r.push([row.size, p.req, p.stock, p.net, h.req, h.stock, h.net, pa.req, pa.stock, pa.net]);
-                    tp.req += p.req; tp.stk += p.stock; tp.net += p.net;
-                    th.req += h.req; th.stk += h.stock; th.net += h.net;
-                    tpa.req += pa.req; tpa.stk += pa.stock; tpa.net += pa.net;
+                const headers = ['Size'];
+                SupplierSummaryService.TYPES.forEach(type => {
+                    headers.push(`${type} Req`, `${type} Stock`, `${type} Net`);
                 });
-                r.push(['GRAND TOTAL', tp.req, tp.stk, tp.net, th.req, th.stk, th.net, tpa.req, tpa.stk, tpa.net]);
+                r.push(headers);
+                
+                const modelTotals = {};
+                SupplierSummaryService.TYPES.forEach(t => { modelTotals[t] = { req: 0, stk: 0, net: 0 }; });
+
+                data.rows.forEach(row => {
+                    const rowData = [row.size];
+                    SupplierSummaryService.TYPES.forEach(type => {
+                        const it = row.items[type] || { req: 0, stock: 0, net: 0 };
+                        if (MANUAL_MODELS.has(type)) {
+                            const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                            const effectiveReq = savedVal !== '' ? parseInt(savedVal) || 0 : 0;
+                            const net = Math.max(0, effectiveReq - (it.stock || 0));
+                            if (modelTotals[type]) {
+                                modelTotals[type].req += effectiveReq;
+                                modelTotals[type].stk += it.stock || 0;
+                                modelTotals[type].net += net;
+                            }
+                            rowData.push(effectiveReq, it.stock || 0, net);
+                        } else {
+                            if (modelTotals[type]) {
+                                modelTotals[type].req += it.effectiveReq || 0;
+                                modelTotals[type].stk += it.stock || 0;
+                                modelTotals[type].net += it.net || 0;
+                            }
+                            rowData.push(it.effectiveReq, it.stock || 0, it.net || 0);
+                        }
+                    });
+                    r.push(rowData);
+                });
+                
+                const grandTotalRow = ['GRAND TOTAL'];
+                SupplierSummaryService.TYPES.forEach(type => {
+                    const t = modelTotals[type] || { req: 0, stk: 0, net: 0 };
+                    grandTotalRow.push(t.req, t.stk, t.net);
+                });
+                r.push(grandTotalRow);
             }
         }
         return r;

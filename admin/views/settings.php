@@ -428,15 +428,40 @@
 
     function loadCustomModels(){
         wp.apiFetch({ path:'/olama-stores/v1/custom-models' }).then(function(rows){
-            var html='<table class="wp-list-table widefat"><thead><tr><th>ID</th><th><?php esc_html_e("Name","olama-stores");?></th><th style="width: 100px;"><?php esc_html_e("Actions","olama-stores");?></th></tr></thead><tbody>';
-            rows.forEach(function(m){ 
-                html+='<tr data-id="'+m.id+'"><td>'+m.id+'</td>'
-                    + '<td><span class="view-mode">'+m.name+'</span><input type="text" class="edit-mode-name os-input" value="'+m.name+'" style="display:none; width: 100%;"></td>'
-                    + '<td>'
-                    + '<button type="button" class="button button-small os-edit-row"><span class="dashicons dashicons-edit"></span></button> '
-                    + '<button type="button" class="button button-small os-save-row" style="display:none;"><span class="dashicons dashicons-yes"></span></button> '
-                    + '<button type="button" class="button button-small button-link-delete os-delete-row"><span class="dashicons dashicons-trash"></span></button>'
-                    + '</td></tr>'; 
+            var html='<table class="wp-list-table widefat"><thead><tr>'
+                + '<th>ID</th>'
+                + '<th><?php esc_html_e("Name","olama-stores");?></th>'
+                + '<th style="width:130px; text-align:center;"><?php esc_html_e("In Survey","olama-stores");?></th>'
+                + '<th style="width:140px; text-align:center;"><?php esc_html_e("Calc Type","olama-stores");?></th>'
+                + '<th style="width:120px;"><?php esc_html_e("Actions","olama-stores");?></th>'
+                + '</tr></thead><tbody>';
+            rows.forEach(function(m){
+                var inSurvey = parseInt(m.include_in_survey) === 1;
+                var calcType = (m.calculation_type === 'manual') ? 'manual' : 'auto';
+
+                var surveyBadge = inSurvey
+                    ? '<span class="os-survey-badge os-survey-yes"><span class="dashicons dashicons-yes-alt" style="font-size:14px;width:14px;height:14px;vertical-align:middle;"></span> <?php esc_html_e("Yes","olama-stores");?></span>'
+                    : '<span class="os-survey-badge os-survey-no"><span class="dashicons dashicons-minus" style="font-size:14px;width:14px;height:14px;vertical-align:middle;"></span> <?php esc_html_e("No","olama-stores");?></span>';
+                var surveyCheck = '<input type="checkbox" class="edit-mode-survey" style="display:none; margin:4px;" ' + (inSurvey ? 'checked' : '') + '>';
+
+                var calcBadge = calcType === 'auto'
+                    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#dbeafe;color:#1d4ed8;"><span class="dashicons dashicons-update" style="font-size:13px;width:13px;height:13px;"></span> <?php esc_html_e("Auto","olama-stores");?></span>'
+                    : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e;"><span class="dashicons dashicons-edit" style="font-size:13px;width:13px;height:13px;"></span> <?php esc_html_e("Manual","olama-stores");?></span>';
+                var calcSelect = '<select class="edit-mode-calc-type" style="display:none;">'
+                    + '<option value="auto"' + (calcType==='auto'?' selected':'') + '><?php esc_html_e("🤖 Auto","olama-stores");?></option>'
+                    + '<option value="manual"' + (calcType==='manual'?' selected':'') + '><?php esc_html_e("✏️ Manual","olama-stores");?></option>'
+                    + '</select>';
+
+                html+=  '<tr data-id="'+m.id+'" data-survey="'+(inSurvey?1:0)+'" data-calc="'+calcType+'">';
+                html += '<td>'+m.id+'</td>';
+                html += '<td><span class="view-mode">'+m.name+'</span><input type="text" class="edit-mode-name os-input" value="'+m.name+'" style="display:none; width:100%;"></td>';
+                html += '<td style="text-align:center;"><span class="view-mode survey-view">'+surveyBadge+'</span>'+surveyCheck+'</td>';
+                html += '<td style="text-align:center;"><span class="view-mode calc-view">'+calcBadge+'</span>'+calcSelect+'</td>';
+                html += '<td>';
+                html += '<button type="button" class="button button-small os-edit-row"><span class="dashicons dashicons-edit"></span></button> ';
+                html += '<button type="button" class="button button-small os-save-row" style="display:none;"><span class="dashicons dashicons-yes"></span></button> ';
+                html += '<button type="button" class="button button-small button-link-delete os-delete-row"><span class="dashicons dashicons-trash"></span></button>';
+                html += '</td></tr>';
             });
             $('#os-custom-models-list').html(html+'</tbody></table>');
         });
@@ -548,7 +573,7 @@
     $(document).on('click', '.os-edit-row', function(){
         var row = $(this).closest('tr');
         row.find('.view-mode').hide();
-        row.find('.edit-mode, .edit-mode-name, .edit-mode-symbol').show();
+        row.find('.edit-mode, .edit-mode-name, .edit-mode-symbol, .edit-mode-survey, .edit-mode-calc-type').show();
         $(this).hide();
         row.find('.os-save-row').show();
     });
@@ -566,6 +591,8 @@
             });
         } else if (tab === 'tab-custom-models') {
             payload.name = row.find('.edit-mode-name').val();
+            payload.include_in_survey = row.find('.edit-mode-survey').is(':checked') ? 1 : 0;
+            payload.calculation_type = row.find('.edit-mode-calc-type').val() || 'auto';
             wp.apiFetch({ path: '/olama-stores/v1/custom-models/' + id, method: 'PUT', data: payload }).then(function(){
                 loadCustomModels();
             });
@@ -935,3 +962,26 @@
 
 })(jQuery);
 </script>
+<style>
+.os-survey-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.os-survey-yes {
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+.os-survey-no {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+</style>
+

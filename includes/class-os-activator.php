@@ -46,17 +46,28 @@ class OS_Activator {
             }
         }
 
+        // Migration: add include_in_survey flag to custom_models table if missing
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '{$p}os_custom_models'" ) ) {
+            if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$p}os_custom_models LIKE 'include_in_survey'" ) ) {
+                $wpdb->query( "ALTER TABLE {$p}os_custom_models ADD COLUMN include_in_survey TINYINT(1) NOT NULL DEFAULT 1 AFTER name" );
+            }
+            // Migration: add calculation_type column if missing
+            if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$p}os_custom_models LIKE 'calculation_type'" ) ) {
+                $wpdb->query( "ALTER TABLE {$p}os_custom_models ADD COLUMN calculation_type ENUM('auto','manual') NOT NULL DEFAULT 'auto' AFTER include_in_survey" );
+            }
+        }
+
         $tables = array();
 
         // ── os_categories ────────────────────────────────────────────────────
         $tables[] = "CREATE TABLE {$p}os_categories (
-            id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            name        VARCHAR(150) NOT NULL,
-            name_ar     VARCHAR(150) DEFAULT NULL,
-            parent_id   INT UNSIGNED DEFAULT NULL,
-            description TEXT DEFAULT NULL,
-            is_active   TINYINT(1)   NOT NULL DEFAULT 1,
-            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name                VARCHAR(150) NOT NULL,
+            name_ar             VARCHAR(150) DEFAULT NULL,
+            parent_id           INT UNSIGNED DEFAULT NULL,
+            description         TEXT DEFAULT NULL,
+            is_active           TINYINT(1)   NOT NULL DEFAULT 1,
+            created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY parent_id (parent_id)
         ) $col;";
@@ -72,8 +83,10 @@ class OS_Activator {
 
         // ── os_custom_models ─────────────────────────────────────────────────
         $tables[] = "CREATE TABLE {$p}os_custom_models (
-            id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            name    VARCHAR(150)  NOT NULL,
+            id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name                VARCHAR(150)  NOT NULL,
+            include_in_survey   TINYINT(1)    NOT NULL DEFAULT 1,
+            calculation_type    ENUM('auto','manual') NOT NULL DEFAULT 'auto',
             PRIMARY KEY (id)
         ) $col;";
 

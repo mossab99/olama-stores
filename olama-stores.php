@@ -3,7 +3,7 @@
  * Plugin Name: Olama Stores
  * Plugin URI:  https://olama.online/olama-stores
  * Description: School warehouse management for Olama School System. Tracks inventory, stock movements, and employee/student item assignments.
- * Version:     1.0.50
+ * Version:     1.0.51
  * Author:      د. مصعب الحنيطي
  * Text Domain: olama-stores
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'OS_VERSION',           '1.2.0' );
+define( 'OS_VERSION',           '1.2.1' );
 define( 'OS_PATH',              plugin_dir_path( __FILE__ ) );
 define( 'OS_URL',               plugin_dir_url( __FILE__ ) );
 define( 'OS_FILE',              __FILE__ );

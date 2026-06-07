@@ -309,11 +309,11 @@ class OS_API_Items {
         global $wpdb;
         $data = $request->get_json_params();
         $wpdb->insert( "{$wpdb->prefix}os_categories", array(
-            'name'      => sanitize_text_field( $data['name'] ?? '' ),
-            'name_ar'   => sanitize_text_field( $data['name_ar'] ?? '' ),
-            'parent_id' => ! empty( $data['parent_id'] ) ? (int) $data['parent_id'] : null,
+            'name'       => sanitize_text_field( $data['name'] ?? '' ),
+            'name_ar'    => sanitize_text_field( $data['name_ar'] ?? '' ),
+            'parent_id'  => ! empty( $data['parent_id'] ) ? (int) $data['parent_id'] : null,
             'description'=> sanitize_textarea_field( $data['description'] ?? '' ),
-            'is_active' => 1,
+            'is_active'  => 1,
         ) );
         return rest_ensure_response( array( 'id' => $wpdb->insert_id ), 201 );
     }
@@ -451,8 +451,13 @@ class OS_API_Items {
     public static function create_custom_model( $request ) {
         global $wpdb;
         $data = $request->get_json_params();
+        $calc_type = in_array( $data['calculation_type'] ?? 'auto', array( 'auto', 'manual' ), true )
+            ? $data['calculation_type']
+            : 'auto';
         $wpdb->insert( "{$wpdb->prefix}os_custom_models", array(
-            'name'    => sanitize_text_field( $data['name'] ?? '' ),
+            'name'              => sanitize_text_field( $data['name'] ?? '' ),
+            'include_in_survey' => isset( $data['include_in_survey'] ) ? (int) (bool) $data['include_in_survey'] : 1,
+            'calculation_type'  => $calc_type,
         ) );
         return rest_ensure_response( array( 'id' => $wpdb->insert_id ), 201 );
     }
@@ -461,9 +466,16 @@ class OS_API_Items {
         global $wpdb;
         $id = (int) $request['id'];
         $data = $request->get_json_params();
-        $wpdb->update( "{$wpdb->prefix}os_custom_models", array(
-            'name'    => sanitize_text_field( $data['name'] ?? '' ),
-        ), array( 'id' => $id ) );
+        $update_data = array(
+            'name' => sanitize_text_field( $data['name'] ?? '' ),
+        );
+        if ( isset( $data['include_in_survey'] ) ) {
+            $update_data['include_in_survey'] = (int) (bool) $data['include_in_survey'];
+        }
+        if ( isset( $data['calculation_type'] ) && in_array( $data['calculation_type'], array( 'auto', 'manual' ), true ) ) {
+            $update_data['calculation_type'] = $data['calculation_type'];
+        }
+        $wpdb->update( "{$wpdb->prefix}os_custom_models", $update_data, array( 'id' => $id ) );
         return rest_ensure_response( array( 'success' => true ) );
     }
 

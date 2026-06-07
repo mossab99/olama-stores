@@ -30,7 +30,14 @@ $active_sem_name  = $active_semester ? esc_html( $active_semester->semester_name
 $school_grades = class_exists( 'Olama_School_Grade' )
     ? Olama_School_Grade::get_grades()
     : array();
+
+// ── Custom Models for estimation survey filter ─────────────────────────────────
+global $wpdb;
+$all_custom_models = $wpdb->get_results(
+    "SELECT id, name, include_in_survey, calculation_type FROM {$wpdb->prefix}os_custom_models ORDER BY name ASC"
+);
 ?>
+
 
 <div class="wrap os-wrap" id="os-estimation-page">
 
@@ -185,6 +192,58 @@ $school_grades = class_exists( 'Olama_School_Grade' )
             </div>
 
         </div><!-- /.os-est-grid-2 -->
+
+        <!-- ── Survey Custom Models Selector ──────────────────────── -->
+        <div class="os-est-card" style="margin-top: 20px;" id="os-cat-selector-card">
+            <div class="os-est-card-header">
+                <span class="dashicons dashicons-tag"></span>
+                <?php esc_html_e( 'Uniform Models for Estimation', 'olama-stores' ); ?>
+                <small style="font-weight: normal; font-size: 12px; margin-left: 8px; color: var(--est-muted, #6b7280);">
+                    <?php esc_html_e( '— Only models marked "Include in Survey" can be selected', 'olama-stores' ); ?>
+                </small>
+            </div>
+            <div class="os-est-card-body">
+                <?php if ( empty( $all_custom_models ) ) : ?>
+                    <p class="os-est-hint">
+                        <?php esc_html_e( 'No custom models found. Add models in Settings → Custom Models.', 'olama-stores' ); ?>
+                    </p>
+                <?php else : ?>
+                    <div id="os-cat-chips-wrap" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <?php foreach ( $all_custom_models as $model ) :
+                            $in_survey = (int) $model->include_in_survey === 1;
+                            $checked   = $in_survey ? 'checked' : '';
+                            $disabled  = ! $in_survey ? 'disabled' : '';
+                        ?>
+                        <label class="os-cat-chip <?php echo $in_survey ? 'os-cat-chip-survey' : 'os-cat-chip-optional'; ?>"
+                               for="os-model-<?php echo esc_attr( $model->id ); ?>"
+                               title="<?php echo $in_survey ? esc_attr__( 'Include in Survey — toggleable', 'olama-stores' ) : esc_attr__( 'Not marked as survey item — excluded', 'olama-stores' ); ?>">
+                            <input type="checkbox"
+                                   id="os-model-<?php echo esc_attr( $model->id ); ?>"
+                                   class="os-cat-selector"
+                                   data-cat-id="<?php echo esc_attr( $model->id ); ?>"
+                                   data-cat-name="<?php echo esc_attr( $model->name ); ?>"
+                                   data-in-survey="<?php echo esc_attr( $in_survey ? '1' : '0' ); ?>"
+                                   <?php echo $checked; ?>
+                                   <?php echo $disabled; ?>
+                                   style="display:none;">
+                            <?php if ( $in_survey ) : ?>
+                                <span class="dashicons dashicons-yes-alt" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
+                            <?php else : ?>
+                                <span class="dashicons dashicons-minus" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
+                            <?php endif; ?>
+                            <?php echo esc_html( $model->name ); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="os-est-hint" style="margin: 0;">
+                        <span class="dashicons dashicons-info" style="color: var(--est-primary, #3b82f6);"></span>
+                        <?php esc_html_e( 'Click a green category to toggle it on/off. Grey categories are excluded from standard survey estimation (configured in Settings → Categories).', 'olama-stores' ); ?>
+                    </p>
+                <?php endif; ?>
+            </div>
+        </div>
+
+
 
         <!-- Per-grade estimation preview -->
         <div id="os-grade-tables-wrap" style="display:none;">
@@ -605,8 +664,18 @@ $school_grades = class_exists( 'Olama_School_Grade' )
     'activeYearId'      => $active_year_id,
     'activeSemId'       => $active_sem_id,
     'activeSemName'     => $active_sem_name,
+    'allCustomModels'   => array_map( function( $m ) {
+        return array(
+            'id'                => (int) $m->id,
+            'name'              => $m->name,
+            'include_in_survey' => (int) $m->include_in_survey,
+            'calculation_type'  => $m->calculation_type ?? 'auto',
+        );
+    }, $all_custom_models ),
 ) ); ?>
 </script>
+
+
 
 
 <!-- Chart.js CDN -->
@@ -631,3 +700,45 @@ wp_enqueue_style(
     OS_VERSION
 );
 ?>
+<style>
+/* ── Category Chip Selector ── */
+.os-cat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+.os-cat-chip-survey {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #86efac;
+}
+.os-cat-chip-survey:hover {
+    background: #bbf7d0;
+    border-color: #4ade80;
+}
+.os-cat-chip-survey.os-cat-deselected {
+    background: #f9fafb;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+.os-cat-chip-survey.os-cat-deselected:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+.os-cat-chip-optional {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+</style>
+
