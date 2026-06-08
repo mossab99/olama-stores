@@ -15,6 +15,14 @@ class OS_Admin
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         add_action('admin_head', array($this, 'print_head_scripts'));
         add_action('admin_notices', array($this, 'low_stock_notice'));
+        add_action('admin_init', array($this, 'register_settings'));
+    }
+
+    public function register_settings()
+    {
+        register_setting('os_settings', 'os_sku_prefix', array('sanitize_callback' => 'sanitize_text_field'));
+        register_setting('os_settings', 'os_low_stock_email', array('sanitize_callback' => 'absint'));
+        register_setting('os_settings', 'os_custom_estimation_editable', array('sanitize_callback' => 'absint'));
     }
 
     /**

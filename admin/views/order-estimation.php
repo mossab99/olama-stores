@@ -684,6 +684,7 @@ $school_details = array(
         );
     }, $all_custom_models ),
     'schoolDetails'     => $school_details,
+    'customEstimationEditable' => get_option( 'os_custom_estimation_editable', 0 ),
 ) ); ?>
 </script>
 

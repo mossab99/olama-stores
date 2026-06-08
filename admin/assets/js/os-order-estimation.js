@@ -4,6 +4,7 @@
     const RAW  = JSON.parse(document.getElementById('os-estimation-data').textContent || '{}');
     const AJAX_URL = RAW.ajaxUrl || '';
     const NONCE    = RAW.nonce   || '';
+    const isCustomEstimationEditable = parseInt(RAW.customEstimationEditable) === 1;
     let   DRAFTS   = RAW.savedDrafts || [];
 
     // ── Custom Model selection state ─────────────────────────────────────────────
@@ -511,7 +512,13 @@
                         const entered = manualQuantities[type]?.[sz];
                         reqQty = (entered !== undefined && entered !== '') ? parseInt(entered) : null;
                     } else {
-                        reqQty = baseQty;
+                        // Check if we have a manual override for this calculated model/size
+                        const entered = manualQuantities[type]?.[sz];
+                        if (isCustomEstimationEditable && entered !== undefined && entered !== '') {
+                            reqQty = parseInt(entered);
+                        } else {
+                            reqQty = baseQty;
+                        }
                     }
 
                     const stockQty = supplierReportData?.inventory?.[type]?.[sz] || 0;
@@ -575,10 +582,10 @@
         $('#os-supplier-table-wrap').show();
 
         const data = SupplierSummaryService.calculateData(gt, reportType);
-        const hasManual = MANUAL_MODELS.size > 0;
+        const hasManual = MANUAL_MODELS.size > 0 || isCustomEstimationEditable;
         let html = '';
 
-        // ── "Apply Manual Quantities" button (shown only when manual models exist)
+        // ── "Apply Manual Quantities" button (shown only when manual models exist or settings allow editable calculated results)
         if (hasManual) {
             html += `<div style="margin-bottom:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <button type="button" id="os-apply-manual-btn" class="button button-primary" style="display:flex;align-items:center;gap:6px;">
@@ -617,6 +624,18 @@
                             </div>`;
                         } else {
                             qtyHtml = `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${savedVal}" style="width:65px; text-align:center; border:1px solid #d97706; border-radius:4px; padding:2px 4px;">`;
+                        }
+                    } else if (isCustomEstimationEditable) {
+                        const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[row.size] || 0) : (gt[row.size] || 0);
+                        const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                        const currentVal = savedVal !== '' ? savedVal : baseQty;
+                        if (config.useInventoryDeduction) {
+                            qtyHtml = `<div style="display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px;">
+                                <input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${currentVal}" style="width:65px; text-align:center; border:1px solid #3b82f6; border-radius:4px; padding:2px 4px;">
+                                <span style="font-size:10px; color:#6b7280; white-space:nowrap;">Stock: ${item.stock} | Net: <strong style="color:#d63638;">${item.net}</strong></span>
+                            </div>`;
+                        } else {
+                            qtyHtml = `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${currentVal}" style="width:65px; text-align:center; border:1px solid #3b82f6; border-radius:4px; padding:2px 4px;">`;
                         }
                     } else {
                         qtyHtml = item.net;
@@ -660,6 +679,13 @@
                             html += `<td style="text-align:center; background:#fffbeb;">`;
                             html += `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${savedVal}" style="width:65px; text-align:center; border:1px solid #d97706; border-radius:4px; padding:2px 4px;"></td>`;
                             rowTotal += savedVal !== '' ? parseInt(savedVal) || 0 : 0;
+                        } else if (isCustomEstimationEditable) {
+                            const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[row.size] || 0) : (gt[row.size] || 0);
+                            const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                            const currentVal = savedVal !== '' ? savedVal : baseQty;
+                            html += `<td style="text-align:center; background:#f0f9ff;">`;
+                            html += `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${row.size}" value="${currentVal}" style="width:65px; text-align:center; border:1px solid #3b82f6; border-radius:4px; padding:2px 4px;"></td>`;
+                            rowTotal += parseInt(currentVal) || 0;
                         } else {
                             html += `<td style="text-align:center;">${item.effectiveReq ?? autoQ}</td>`;
                             rowTotal += item.effectiveReq ?? autoQ;
@@ -675,6 +701,15 @@
                         const typeTotal = Object.values(manualQuantities[type] || {}).reduce((a,b) => a + (parseInt(b)||0), 0);
                         grandTotal += typeTotal;
                         html += `<td style="text-align:center; background:#fffbeb; font-weight:700; color:#92400e;">${typeTotal || '—'}</td>`;
+                    } else if (isCustomEstimationEditable) {
+                        const typeTotal = data.rows.reduce((s, r) => {
+                            const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[r.size] || 0) : (gt[r.size] || 0);
+                            const savedVal = manualQuantities[type]?.[r.size] ?? '';
+                            const val = savedVal !== '' ? parseInt(savedVal) || 0 : baseQty;
+                            return s + val;
+                        }, 0);
+                        grandTotal += typeTotal;
+                        html += `<td style="text-align:center; background:#f0f9ff; font-weight:700; color:#0369a1;">${typeTotal || '—'}</td>`;
                     } else {
                         const typeTotal = data.rows.reduce((s, r) => s + (r.items[type]?.effectiveReq || 0), 0);
                         grandTotal += typeTotal;
@@ -709,6 +744,20 @@
                             }
                             html += `<td style="text-align:center; border-left:2px solid #ccc; background:#fffbeb;">`;
                             html += `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${r.size}" value="${savedVal}" style="width:55px;text-align:center;border:1px solid #d97706;border-radius:4px;padding:1px 3px;"></td>`;
+                            html += `<td style="text-align:center;">${it.stock}</td>`;
+                            html += `<td style="text-align:center; color:#d63638; font-weight:bold;">${net}</td>`;
+                        } else if (isCustomEstimationEditable) {
+                            const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[r.size] || 0) : (gt[r.size] || 0);
+                            const savedVal = manualQuantities[type]?.[r.size] ?? '';
+                            const effectiveReq = savedVal !== '' ? parseInt(savedVal) || 0 : baseQty;
+                            const net = Math.max(0, effectiveReq - (it.stock || 0));
+                            if (modelTotals[type]) {
+                                modelTotals[type].req += effectiveReq;
+                                modelTotals[type].stk += it.stock || 0;
+                                modelTotals[type].net += net;
+                            }
+                            html += `<td style="text-align:center; border-left:2px solid #ccc; background:#f0f9ff;">`;
+                            html += `<input type="number" min="0" class="os-manual-qty" data-model="${type}" data-size="${r.size}" value="${effectiveReq}" style="width:55px;text-align:center;border:1px solid #3b82f6;border-radius:4px;padding:1px 3px;"></td>`;
                             html += `<td style="text-align:center;">${it.stock}</td>`;
                             html += `<td style="text-align:center; color:#d63638; font-weight:bold;">${net}</td>`;
                         } else {
@@ -795,6 +844,9 @@
                 if (MANUAL_MODELS.has(type)) {
                     const savedVal = manualQuantities[type]?.[sz] ?? '';
                     row.push(savedVal !== '' ? parseInt(savedVal) || 0 : 0);
+                } else if (isCustomEstimationEditable) {
+                    const savedVal = manualQuantities[type]?.[sz] ?? '';
+                    row.push(savedVal !== '' ? parseInt(savedVal) || 0 : f);
                 } else {
                     row.push(f);
                 }
@@ -842,6 +894,12 @@
                             const val = savedVal !== '' ? parseInt(savedVal) || 0 : 0;
                             rowData.push(val);
                             rowTotal += val;
+                        } else if (isCustomEstimationEditable) {
+                            const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[row.size] || 0) : (lastGrandTotal[row.size] || 0);
+                            const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                            const val = savedVal !== '' ? parseInt(savedVal) || 0 : baseQty;
+                            rowData.push(val);
+                            rowTotal += val;
                         } else {
                             const val = item.effectiveReq ?? autoQ;
                             rowData.push(val);
@@ -857,6 +915,15 @@
                 SupplierSummaryService.TYPES.forEach(type => {
                     if (MANUAL_MODELS.has(type)) {
                         const typeTotal = Object.values(manualQuantities[type] || {}).reduce((a,b) => a + (parseInt(b)||0), 0);
+                        grandTotal += typeTotal;
+                        totalRow.push(typeTotal);
+                    } else if (isCustomEstimationEditable) {
+                        const typeTotal = data.rows.reduce((s, r) => {
+                            const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[r.size] || 0) : (lastGrandTotal[r.size] || 0);
+                            const savedVal = manualQuantities[type]?.[r.size] ?? '';
+                            const val = savedVal !== '' ? parseInt(savedVal) || 0 : baseQty;
+                            return s + val;
+                        }, 0);
                         grandTotal += typeTotal;
                         totalRow.push(typeTotal);
                     } else {
@@ -884,6 +951,17 @@
                         if (MANUAL_MODELS.has(type)) {
                             const savedVal = manualQuantities[type]?.[row.size] ?? '';
                             const effectiveReq = savedVal !== '' ? parseInt(savedVal) || 0 : 0;
+                            const net = Math.max(0, effectiveReq - (it.stock || 0));
+                            if (modelTotals[type]) {
+                                modelTotals[type].req += effectiveReq;
+                                modelTotals[type].stk += it.stock || 0;
+                                modelTotals[type].net += net;
+                            }
+                            rowData.push(effectiveReq, it.stock || 0, net);
+                        } else if (isCustomEstimationEditable) {
+                            const baseQty = config.useActualScans ? (supplierReportData?.actual_scans?.[row.size] || 0) : (lastGrandTotal[row.size] || 0);
+                            const savedVal = manualQuantities[type]?.[row.size] ?? '';
+                            const effectiveReq = savedVal !== '' ? parseInt(savedVal) || 0 : baseQty;
                             const net = Math.max(0, effectiveReq - (it.stock || 0));
                             if (modelTotals[type]) {
                                 modelTotals[type].req += effectiveReq;
