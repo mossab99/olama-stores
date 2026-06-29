@@ -94,26 +94,61 @@ class OS_API_Reports {
             'color'        => sanitize_text_field( (string) $request->get_param( 'color' ) ),
             'size'         => sanitize_text_field( (string) $request->get_param( 'size' ) ),
         );
+        $warehouse_value = trim( (string) $request->get_param( 'warehouse_id' ) );
+        $category_value  = trim( (string) $request->get_param( 'category_id' ) );
+        $unit_value      = trim( (string) $request->get_param( 'unit_id' ) );
+        $provider_value  = trim( (string) $request->get_param( 'provider_id' ) );
+        $model_value     = trim( (string) $request->get_param( 'model_id' ) );
 
         $where  = array( 'i.is_active = 1' );
         $params = array();
-        $columns = array(
-            'warehouse_id' => 's.warehouse_id',
-            'category_id'  => 'i.category_id',
-            'unit_id'      => 'i.unit_id',
-            'provider_id'  => 'i.provider_id',
-        );
-        foreach ( $columns as $key => $column ) {
-            if ( $filters[ $key ] ) {
-                $where[]  = "$column = %d";
-                $params[] = $filters[ $key ];
+        if ( $warehouse_value !== '' ) {
+            if ( ctype_digit( $warehouse_value ) ) {
+                $where[]  = 's.warehouse_id = %d';
+                $params[] = (int) $warehouse_value;
+            } else {
+                $where[]  = 'LOWER(TRIM(w.name)) = LOWER(TRIM(%s))';
+                $params[] = $warehouse_value;
+            }
+        }
+        if ( $category_value !== '' ) {
+            if ( ctype_digit( $category_value ) ) {
+                $where[]  = 'i.category_id = %d';
+                $params[] = (int) $category_value;
+            } else {
+                $where[]  = 'LOWER(TRIM(c.name)) = LOWER(TRIM(%s))';
+                $params[] = $category_value;
+            }
+        }
+        if ( $unit_value !== '' ) {
+            if ( ctype_digit( $unit_value ) ) {
+                $where[]  = 'i.unit_id = %d';
+                $params[] = (int) $unit_value;
+            } else {
+                $where[]  = '(LOWER(TRIM(u.name)) = LOWER(TRIM(%s)) OR LOWER(TRIM(u.symbol)) = LOWER(TRIM(%s)))';
+                $params[] = $unit_value;
+                $params[] = $unit_value;
+            }
+        }
+        if ( $provider_value !== '' ) {
+            if ( ctype_digit( $provider_value ) ) {
+                $where[]  = 'i.provider_id = %d';
+                $params[] = (int) $provider_value;
+            } else {
+                $where[]  = 'LOWER(TRIM(p.company_name)) = LOWER(TRIM(%s))';
+                $params[] = $provider_value;
             }
         }
 
         $spec = "CASE WHEN JSON_VALID(i.specifications) THEN i.specifications ELSE '{}' END";
-        if ( $filters['model_id'] ) {
-            $where[]  = "CAST(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.model_id')) AS UNSIGNED) = %d";
-            $params[] = $filters['model_id'];
+        if ( $model_value !== '' ) {
+            if ( ctype_digit( $model_value ) ) {
+                $where[]  = "CAST(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.model_id')) AS UNSIGNED) = %d";
+                $params[] = (int) $model_value;
+            } else {
+                $where[]  = 'LOWER(TRIM(cm.name)) = LOWER(TRIM(%s))';
+                $params[] = $model_value;
+            }
         }
         foreach ( array( 'fabric', 'color' ) as $key ) {
             if ( $filters[ $key ] !== '' ) {
