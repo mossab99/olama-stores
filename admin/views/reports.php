@@ -5,6 +5,48 @@
         <?php esc_html_e( 'Reports Center', 'olama-stores' ); ?>
     </h1>
 
+    <style>
+        #os-reports-page { --report-blue:#2563eb; --report-navy:#172554; --report-border:#dbe3ef; --report-muted:#64748b; max-width:1400px; }
+        #os-reports-page .nav-tab-wrapper { display:flex; gap:6px; padding:0; border-bottom:1px solid var(--report-border); }
+        #os-reports-page .nav-tab { display:flex; align-items:center; gap:7px; margin:0; padding:11px 16px; border:1px solid var(--report-border); border-bottom:0; border-radius:8px 8px 0 0; background:#f8fafc; color:#475569; font-weight:600; }
+        #os-reports-page .nav-tab:hover { color:var(--report-blue); background:#fff; }
+        #os-reports-page .nav-tab-active { color:var(--report-blue); background:#fff; box-shadow:inset 0 3px 0 var(--report-blue); }
+        #os-reports-page .os-rpt-tab-content { padding-top:20px !important; }
+        #os-reports-page .os-report-intro { margin:0 0 14px; color:var(--report-muted); font-size:14px; }
+        #os-reports-page .os-report-filter-card { display:flex; align-items:flex-end; flex-wrap:wrap; gap:14px; height:auto; margin:0 0 20px; padding:18px; border:1px solid var(--report-border); border-radius:12px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.05); }
+        #os-reports-page .os-report-filter { display:flex; flex:1 1 155px; min-width:140px; flex-direction:column; gap:6px; }
+        #os-reports-page .os-report-filter-wide { flex-basis:260px; }
+        #os-reports-page .os-report-filter label { color:#334155; font-size:12px; font-weight:700; letter-spacing:.02em; }
+        #os-reports-page .os-report-filter select, #os-reports-page .os-report-filter input { width:100%; min-height:40px; margin:0; border-color:#cbd5e1; border-radius:7px; background-color:#fff; color:#0f172a; }
+        #os-reports-page .os-report-filter select:focus, #os-reports-page .os-report-filter input:focus { border-color:var(--report-blue); box-shadow:0 0 0 1px var(--report-blue); }
+        #os-reports-page .os-report-actions { display:flex; align-items:center; flex:0 0 auto; gap:8px; padding-bottom:1px; }
+        #os-reports-page .os-report-actions .button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:0 16px; border-radius:7px; font-weight:600; }
+        #os-reports-page .os-report-actions .button-primary { border-color:var(--report-blue); background:var(--report-blue); }
+        #os-reports-page .os-report-results { min-height:110px; }
+        #os-reports-page .os-report-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:0 0 16px; }
+        #os-reports-page .os-report-stat { position:relative; overflow:hidden; padding:16px 18px; border:1px solid var(--report-border); border-radius:11px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.05); }
+        #os-reports-page .os-report-stat:before { position:absolute; inset-block:0; inset-inline-start:0; width:4px; background:#64748b; content:""; }
+        #os-reports-page .os-report-stat-primary:before { background:var(--report-blue); }
+        #os-reports-page .os-report-stat-warning:before { background:#f59e0b; }
+        #os-reports-page .os-report-stat-success:before { background:#16a34a; }
+        #os-reports-page .os-report-stat-danger:before { background:#dc2626; }
+        #os-reports-page .os-report-stat-label { display:block; margin-bottom:5px; color:var(--report-muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+        #os-reports-page .os-report-stat-value { display:block; color:var(--report-navy); font-size:25px; font-weight:750; line-height:1.15; }
+        #os-reports-page .os-report-table { overflow:hidden; border:1px solid var(--report-border); border-radius:12px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.05); }
+        #os-reports-page .os-report-table-scroll { overflow-x:auto; }
+        #os-reports-page .os-report-table table { margin:0; border:0; box-shadow:none; }
+        #os-reports-page .os-report-table th { padding:12px 10px; border:0; background:var(--report-blue); color:#fff; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.025em; }
+        #os-reports-page .os-report-table td { padding:11px 10px; border-bottom:1px solid #edf2f7; vertical-align:middle; }
+        #os-reports-page .os-report-table tbody tr:last-child td { border-bottom:0; }
+        #os-reports-page .os-report-table code { color:#475569; background:#f1f5f9; }
+        #os-reports-page .os-report-state { display:flex; align-items:center; justify-content:center; min-height:110px; box-sizing:border-box; padding:20px; border:1px dashed #cbd5e1; border-radius:12px; background:#f8fafc; color:var(--report-muted); text-align:center; }
+        #os-reports-page .os-report-progress { display:flex; align-items:center; gap:8px; }
+        #os-reports-page .os-report-progress-track { flex:1; height:8px; overflow:hidden; border-radius:99px; background:#e2e8f0; }
+        #os-reports-page .os-report-progress-value { height:100%; border-radius:99px; background:var(--report-blue); }
+        @media (max-width:900px) { #os-reports-page .os-report-summary { grid-template-columns:repeat(2,minmax(130px,1fr)); } #os-reports-page .nav-tab-wrapper { overflow-x:auto; } #os-reports-page .nav-tab { flex:0 0 auto; } }
+        @media (max-width:600px) { #os-reports-page .os-report-filter { flex-basis:100%; } #os-reports-page .os-report-actions { width:100%; } #os-reports-page .os-report-actions .button { flex:1; } #os-reports-page .os-report-summary { grid-template-columns:1fr 1fr; } }
+    </style>
+
     <!-- REC-18, REC-19: Tab Navigation -->
     <div class="nav-tab-wrapper" style="margin-bottom:0;">
         <a href="#rpt-movements" class="nav-tab nav-tab-active" data-rpt-tab="movements">
@@ -23,16 +65,18 @@
 
     <!-- ── TAB: Stock Movements (existing) ──────────────────────────────────── -->
     <div id="rpt-movements" class="os-rpt-tab-content" style="padding-top:16px;">
-        <div class="os-filters tablenav top">
-            <select id="os-rpt-warehouse"><option value=""><?php esc_html_e( 'All Warehouses', 'olama-stores' ); ?></option></select>
+        <p class="os-report-intro"><?php esc_html_e( 'Review stock activity by warehouse, item, period, and movement type.', 'olama-stores' ); ?></p>
+        <div class="os-filters tablenav top os-report-filter-card">
+            <div class="os-report-filter"><label for="os-rpt-warehouse"><?php esc_html_e( 'Warehouse', 'olama-stores' ); ?></label><select id="os-rpt-warehouse"><option value=""><?php esc_html_e( 'All Warehouses', 'olama-stores' ); ?></option></select></div>
             <!-- REC-11: Item filter -->
-            <div class="os-input-group" style="display:inline-flex; min-width:220px; vertical-align:middle;">
+            <div class="os-input-group os-report-filter os-report-filter-wide">
+                <label for="os-rpt-item-search"><?php esc_html_e( 'Stock Item', 'olama-stores' ); ?></label>
                 <input type="text" id="os-rpt-item-search" class="os-modal-item-search" data-target="#os-rpt-item" placeholder="<?php esc_attr_e( 'Filter by item...', 'olama-stores' ); ?>">
                 <select id="os-rpt-item"><option value=""><?php esc_html_e( 'All Items', 'olama-stores' ); ?></option></select>
             </div>
-            <input type="date" id="os-rpt-date-from" placeholder="<?php esc_attr_e( 'From', 'olama-stores' ); ?>">
-            <input type="date" id="os-rpt-date-to"   placeholder="<?php esc_attr_e( 'To', 'olama-stores' ); ?>">
-            <select id="os-rpt-movement-type">
+            <div class="os-report-filter"><label for="os-rpt-date-from"><?php esc_html_e( 'From Date', 'olama-stores' ); ?></label><input type="date" id="os-rpt-date-from"></div>
+            <div class="os-report-filter"><label for="os-rpt-date-to"><?php esc_html_e( 'To Date', 'olama-stores' ); ?></label><input type="date" id="os-rpt-date-to"></div>
+            <div class="os-report-filter"><label for="os-rpt-movement-type"><?php esc_html_e( 'Movement Type', 'olama-stores' ); ?></label><select id="os-rpt-movement-type">
                 <option value=""><?php esc_html_e( 'All Movement Types', 'olama-stores' ); ?></option>
                 <option value="purchase_receipt"><?php esc_html_e( 'Stock Receipt', 'olama-stores' ); ?></option>
                 <option value="opening_balance"><?php esc_html_e( 'Opening Balance', 'olama-stores' ); ?></option>
@@ -46,56 +90,58 @@
                 <option value="adjustment_sub"><?php esc_html_e( 'Adjustment (-)', 'olama-stores' ); ?></option>
                 <option value="damage_loss"><?php esc_html_e( 'Damage / Loss', 'olama-stores' ); ?></option>
                 <option value="inventory_count"><?php esc_html_e( 'Inventory Count', 'olama-stores' ); ?></option>
-            </select>
-            <button class="button button-primary" id="os-rpt-load"><?php esc_html_e( 'Load', 'olama-stores' ); ?></button>
-            <button class="button" id="os-rpt-export"><?php esc_html_e( 'Export Excel', 'olama-stores' ); ?></button>
+            </select></div>
+            <div class="os-report-actions"><button class="button button-primary" id="os-rpt-load"><span class="dashicons dashicons-update"></span><?php esc_html_e( 'Load Report', 'olama-stores' ); ?></button>
+            <button class="button" id="os-rpt-export"><span class="dashicons dashicons-download"></span><?php esc_html_e( 'Export Excel', 'olama-stores' ); ?></button></div>
         </div>
-        <div id="os-movements-table-wrap">
-            <p class="os-loading"><?php esc_html_e( 'Select filters and click Load.', 'olama-stores' ); ?></p>
+        <div id="os-movements-table-wrap" class="os-report-results">
+            <p class="os-report-state"><?php esc_html_e( 'Select filters and click Load Report.', 'olama-stores' ); ?></p>
         </div>
     </div>
 
     <!-- ── TAB: Provider Spend (REC-18) ─────────────────────────────────────── -->
     <div id="rpt-provider-spend" class="os-rpt-tab-content" style="display:none; padding-top:16px;">
-        <div class="os-filters tablenav top">
-            <input type="date" id="os-spend-date-from" placeholder="<?php esc_attr_e( 'From', 'olama-stores' ); ?>">
-            <input type="date" id="os-spend-date-to" placeholder="<?php esc_attr_e( 'To', 'olama-stores' ); ?>">
-            <button class="button button-primary" id="os-spend-load"><?php esc_html_e( 'Load', 'olama-stores' ); ?></button>
+        <p class="os-report-intro"><?php esc_html_e( 'Compare purchasing activity and total spend across providers.', 'olama-stores' ); ?></p>
+        <div class="os-filters tablenav top os-report-filter-card">
+            <div class="os-report-filter"><label for="os-spend-date-from"><?php esc_html_e( 'From Date', 'olama-stores' ); ?></label><input type="date" id="os-spend-date-from"></div>
+            <div class="os-report-filter"><label for="os-spend-date-to"><?php esc_html_e( 'To Date', 'olama-stores' ); ?></label><input type="date" id="os-spend-date-to"></div>
+            <div class="os-report-actions"><button class="button button-primary" id="os-spend-load"><span class="dashicons dashicons-update"></span><?php esc_html_e( 'Load Report', 'olama-stores' ); ?></button></div>
         </div>
-        <div id="os-spend-table-wrap">
-            <p><?php esc_html_e( 'Select a date range and click Load to see provider spending.', 'olama-stores' ); ?></p>
+        <div id="os-spend-table-wrap" class="os-report-results">
+            <p class="os-report-state"><?php esc_html_e( 'Select a date range and click Load Report.', 'olama-stores' ); ?></p>
         </div>
     </div>
 
     <!-- ── TAB: Custody Aging (REC-19) ──────────────────────────────────────── -->
     <div id="rpt-custody-aging" class="os-rpt-tab-content" style="display:none; padding-top:16px;">
-        <div class="os-filters tablenav top">
-            <select id="os-aging-type">
+        <p class="os-report-intro"><?php esc_html_e( 'Identify overdue employee custody and student withdrawal records.', 'olama-stores' ); ?></p>
+        <div class="os-filters tablenav top os-report-filter-card">
+            <div class="os-report-filter"><label for="os-aging-type"><?php esc_html_e( 'Custody Type', 'olama-stores' ); ?></label><select id="os-aging-type">
                 <option value="employee"><?php esc_html_e( 'Employee Custody', 'olama-stores' ); ?></option>
                 <option value="student"><?php esc_html_e( 'Student Withdrawals', 'olama-stores' ); ?></option>
-            </select>
-            <button class="button button-primary" id="os-aging-load"><?php esc_html_e( 'Load', 'olama-stores' ); ?></button>
-            <button class="button" id="os-aging-export"><?php esc_html_e( 'Export Excel', 'olama-stores' ); ?></button>
+            </select></div>
+            <div class="os-report-actions"><button class="button button-primary" id="os-aging-load"><span class="dashicons dashicons-update"></span><?php esc_html_e( 'Load Report', 'olama-stores' ); ?></button>
+            <button class="button" id="os-aging-export"><span class="dashicons dashicons-download"></span><?php esc_html_e( 'Export Excel', 'olama-stores' ); ?></button></div>
         </div>
-        <div id="os-aging-table-wrap">
-            <p><?php esc_html_e( 'Load to see all overdue custodians sorted by days overdue.', 'olama-stores' ); ?></p>
+        <div id="os-aging-table-wrap" class="os-report-results">
+            <p class="os-report-state"><?php esc_html_e( 'Load the report to see overdue records sorted by days overdue.', 'olama-stores' ); ?></p>
         </div>
     </div>
 
     <div id="rpt-custom-stock" class="os-rpt-tab-content" style="display:none; padding-top:16px;">
-        <p class="description"><?php esc_html_e( 'Combine any filters below to analyze current stock availability.', 'olama-stores' ); ?></p>
-        <div class="os-filters tablenav top" id="os-custom-report-filters" style="height:auto; display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px;">
-            <select id="os-cr-warehouse"><option value=""><?php esc_html_e( 'All Warehouses', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-category"><option value=""><?php esc_html_e( 'All Categories', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-unit"><option value=""><?php esc_html_e( 'All Units', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-provider"><option value=""><?php esc_html_e( 'All Providers', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-model"><option value=""><?php esc_html_e( 'All Models', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-fabric"><option value=""><?php esc_html_e( 'All Fabrics', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-color"><option value=""><?php esc_html_e( 'All Colors', 'olama-stores' ); ?></option></select>
-            <select id="os-cr-size"><option value=""><?php esc_html_e( 'All Sizes', 'olama-stores' ); ?></option></select>
-            <button type="button" class="button" id="os-cr-reset"><?php esc_html_e( 'Reset', 'olama-stores' ); ?></button>
+        <p class="os-report-intro"><?php esc_html_e( 'Combine any filters below to analyze current stock availability. Results update automatically.', 'olama-stores' ); ?></p>
+        <div class="os-filters tablenav top os-report-filter-card" id="os-custom-report-filters">
+            <div class="os-report-filter"><label for="os-cr-warehouse"><?php esc_html_e( 'Warehouse', 'olama-stores' ); ?></label><select id="os-cr-warehouse"><option value=""><?php esc_html_e( 'All Warehouses', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-category"><?php esc_html_e( 'Category', 'olama-stores' ); ?></label><select id="os-cr-category"><option value=""><?php esc_html_e( 'All Categories', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-unit"><?php esc_html_e( 'Unit', 'olama-stores' ); ?></label><select id="os-cr-unit"><option value=""><?php esc_html_e( 'All Units', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-provider"><?php esc_html_e( 'Provider', 'olama-stores' ); ?></label><select id="os-cr-provider"><option value=""><?php esc_html_e( 'All Providers', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-model"><?php esc_html_e( 'Model', 'olama-stores' ); ?></label><select id="os-cr-model"><option value=""><?php esc_html_e( 'All Models', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-fabric"><?php esc_html_e( 'Fabric', 'olama-stores' ); ?></label><select id="os-cr-fabric"><option value=""><?php esc_html_e( 'All Fabrics', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-color"><?php esc_html_e( 'Color', 'olama-stores' ); ?></label><select id="os-cr-color"><option value=""><?php esc_html_e( 'All Colors', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-filter"><label for="os-cr-size"><?php esc_html_e( 'Size', 'olama-stores' ); ?></label><select id="os-cr-size"><option value=""><?php esc_html_e( 'All Sizes', 'olama-stores' ); ?></option></select></div>
+            <div class="os-report-actions"><button type="button" class="button" id="os-cr-reset"><span class="dashicons dashicons-image-rotate"></span><?php esc_html_e( 'Reset Filters', 'olama-stores' ); ?></button></div>
         </div>
-        <div id="os-custom-stock-table-wrap"><p><?php esc_html_e( 'Loading stock availability…', 'olama-stores' ); ?></p></div>
+        <div id="os-custom-stock-table-wrap" class="os-report-results"><p class="os-report-state"><?php esc_html_e( 'Loading stock availability…', 'olama-stores' ); ?></p></div>
     </div>
 
 </div>
@@ -136,6 +182,15 @@
     });
 
     function esc(value) { return $('<div>').text(value == null ? '' : value).html(); }
+    function reportState(message, extraClass) {
+        return '<div class="os-report-state '+(extraClass||'')+'">'+message+'</div>';
+    }
+    function reportTable(table) {
+        return '<div class="os-report-table"><div class="os-report-table-scroll">'+table+'</div></div>';
+    }
+    function reportStat(label, value, tone) {
+        return '<div class="os-report-stat os-report-stat-'+(tone||'primary')+'"><span class="os-report-stat-label">'+label+'</span><span class="os-report-stat-value">'+value+'</span></div>';
+    }
     function fillReportFilter(selector, rows, labelKey, valueKey) {
         var $select = $(selector), first = $select.find('option').first().prop('outerHTML');
         var options = first;
@@ -176,9 +231,9 @@
         if($('#os-rpt-date-from').val())     p+='&date_from='+$('#os-rpt-date-from').val();
         if($('#os-rpt-date-to').val())       p+='&date_to='+$('#os-rpt-date-to').val();
         if($('#os-rpt-movement-type').val()) p+='&movement_type='+$('#os-rpt-movement-type').val();
-        $('#os-movements-table-wrap').html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
+        $('#os-movements-table-wrap').html(reportState('<?php esc_html_e("Loading report…","olama-stores");?>'));
         wp.apiFetch({ path:'/olama-stores/v1/reports/item-movements'+p }).then(function(rows){
-            if(!rows.length){ $('#os-movements-table-wrap').html('<p><?php esc_html_e("No movements found.","olama-stores");?></p>'); return; }
+            if(!rows.length){ $('#os-movements-table-wrap').html(reportState('<?php esc_html_e("No movements found for the selected filters.","olama-stores");?>')); return; }
             var html='<table class="wp-list-table widefat striped"><thead><tr>'
                 +'<th><?php esc_html_e("Date","olama-stores");?></th>'
                 +'<th><?php esc_html_e("Item","olama-stores");?></th>'
@@ -198,7 +253,10 @@
                     +'<td>'+(m.notes||'')+'</td></tr>';
             });
             html+='</tbody></table>';
-            $('#os-movements-table-wrap').html(html);
+            var movementSummary = '<div class="os-report-summary">'
+                + reportStat('<?php esc_html_e("Matching Movements","olama-stores");?>', rows.length.toLocaleString(), 'primary')
+                + '</div>';
+            $('#os-movements-table-wrap').html(movementSummary + reportTable(html));
         });
     });
 
@@ -217,16 +275,14 @@
         if($('#os-spend-date-from').val()) p+='date_from='+$('#os-spend-date-from').val()+'&';
         if($('#os-spend-date-to').val())   p+='date_to='+$('#os-spend-date-to').val()+'&';
         p += 'academic_year_id='+(olamaStores.activeYearId||'');
-        $('#os-spend-table-wrap').html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
+        $('#os-spend-table-wrap').html(reportState('<?php esc_html_e("Loading report…","olama-stores");?>'));
         wp.apiFetch({ path:'/olama-stores/v1/reports/provider-spend'+p }).then(function(rows){
             if(!rows.length){
-                $('#os-spend-table-wrap').html('<p><?php esc_html_e("No provider spend data found for this period.","olama-stores");?></p>');
+                $('#os-spend-table-wrap').html(reportState('<?php esc_html_e("No provider spend data found for this period.","olama-stores");?>'));
                 return;
             }
             var totalSpend = rows.reduce(function(s,r){ return s + parseFloat(r.total_spend||0); }, 0);
-            var html = '<p><strong><?php esc_html_e("Total spend this period:","olama-stores");?></strong> '
-                + totalSpend.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) + '</p>'
-                + '<table class="wp-list-table widefat striped"><thead><tr>'
+            var html = '<table class="wp-list-table widefat striped"><thead><tr>'
                 + '<th><?php esc_html_e("Provider","olama-stores");?></th>'
                 + '<th style="text-align:right;"><?php esc_html_e("Receipts","olama-stores");?></th>'
                 + '<th style="text-align:right;"><?php esc_html_e("Total Units","olama-stores");?></th>'
@@ -241,16 +297,20 @@
                     + '<td style="text-align:right;">'+(r.receipt_count||0)+'</td>'
                     + '<td style="text-align:right;">'+(r.total_units||0)+'</td>'
                     + '<td style="text-align:right; font-weight:600;">'+spend.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})+'</td>'
-                    + '<td><div style="display:flex;align-items:center;gap:8px;">'
-                    + '<div style="flex:1;height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;">'
-                    + '<div style="height:100%;width:'+pct+'%;background:var(--os-primary,#0073aa);border-radius:4px;transition:width .4s;"></div>'
+                    + '<td><div class="os-report-progress">'
+                    + '<div class="os-report-progress-track">'
+                    + '<div class="os-report-progress-value" style="width:'+pct+'%;"></div>'
                     + '</div><span style="min-width:32px;font-size:.8em;">'+pct+'%</span></div></td>'
                     + '</tr>';
             });
             html += '</tbody></table>';
-            $('#os-spend-table-wrap').html(html);
+            var spendSummary = '<div class="os-report-summary">'
+                + reportStat('<?php esc_html_e("Providers","olama-stores");?>', rows.length.toLocaleString(), 'primary')
+                + reportStat('<?php esc_html_e("Total Spend","olama-stores");?>', totalSpend.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}), 'success')
+                + '</div>';
+            $('#os-spend-table-wrap').html(spendSummary + reportTable(html));
         }).catch(function(){
-            $('#os-spend-table-wrap').html('<p class="os-error"><?php esc_html_e("Error loading provider spend data.","olama-stores");?></p>');
+            $('#os-spend-table-wrap').html(reportState('<?php esc_html_e("Error loading provider spend data.","olama-stores");?>', 'os-error'));
         });
     });
 
@@ -258,14 +318,13 @@
     function loadCustodyAging() {
         var type = $('#os-aging-type').val();
         var p = '?assignee_type='+type+'&academic_year_id='+(olamaStores.activeYearId||'');
-        $('#os-aging-table-wrap').html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
+        $('#os-aging-table-wrap').html(reportState('<?php esc_html_e("Loading report…","olama-stores");?>'));
         wp.apiFetch({ path:'/olama-stores/v1/reports/custody-aging'+p }).then(function(rows){
             if(!rows.length){
-                $('#os-aging-table-wrap').html('<p><?php esc_html_e("No overdue records found. All custody is on time!","olama-stores");?></p>');
+                $('#os-aging-table-wrap').html(reportState('<?php esc_html_e("No overdue records found. All custody is on time!","olama-stores");?>'));
                 return;
             }
-            var html = '<p><strong>' + rows.length + ' <?php esc_html_e("overdue records","olama-stores");?></strong></p>'
-                + '<table class="wp-list-table widefat striped"><thead><tr>'
+            var html = '<table class="wp-list-table widefat striped"><thead><tr>'
                 + '<th><?php esc_html_e("Employee / Student","olama-stores");?></th>'
                 + '<th><?php esc_html_e("Item","olama-stores");?></th>'
                 + '<th style="text-align:center;"><?php esc_html_e("Qty","olama-stores");?></th>'
@@ -286,9 +345,12 @@
                     + '</tr>';
             });
             html += '</tbody></table>';
-            $('#os-aging-table-wrap').html(html);
+            var agingSummary = '<div class="os-report-summary">'
+                + reportStat('<?php esc_html_e("Overdue Records","olama-stores");?>', rows.length.toLocaleString(), 'danger')
+                + '</div>';
+            $('#os-aging-table-wrap').html(agingSummary + reportTable(html));
         }).catch(function(){
-            $('#os-aging-table-wrap').html('<p class="os-error"><?php esc_html_e("Error loading custody aging data.","olama-stores");?></p>');
+            $('#os-aging-table-wrap').html(reportState('<?php esc_html_e("Error loading custody aging data.","olama-stores");?>', 'os-error'));
         });
     }
 
@@ -314,10 +376,10 @@
             var value = $(selector).val();
             if (value) query.push(encodeURIComponent(key)+'='+encodeURIComponent(value));
         });
-        $('#os-custom-stock-table-wrap').html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
+        $('#os-custom-stock-table-wrap').html(reportState('<?php esc_html_e("Loading stock availability…","olama-stores");?>'));
         wp.apiFetch({path:'/olama-stores/v1/reports/custom-stock'+(query.length ? '?'+query.join('&') : '')}).then(function(rows){
             if (!rows.length) {
-                $('#os-custom-stock-table-wrap').html('<p><?php esc_html_e("No stock items match the selected filters.","olama-stores");?></p>');
+                $('#os-custom-stock-table-wrap').html(reportState('<?php esc_html_e("No stock items match the selected filters.","olama-stores");?>'));
                 return;
             }
             var totalOnHand = 0, totalReserved = 0, totalAvailable = 0;
@@ -326,12 +388,13 @@
                 totalReserved += parseInt(row.quantity_reserved, 10) || 0;
                 totalAvailable += parseInt(row.quantity_available, 10) || 0;
             });
-            var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 12px;">'
-                + '<strong><?php esc_html_e("Matching stock rows:","olama-stores");?> '+rows.length+'</strong>'
-                + '<span><?php esc_html_e("On hand:","olama-stores");?> <strong>'+totalOnHand.toLocaleString()+'</strong></span>'
-                + '<span><?php esc_html_e("Reserved:","olama-stores");?> <strong>'+totalReserved.toLocaleString()+'</strong></span>'
-                + '<span><?php esc_html_e("Available:","olama-stores");?> <strong>'+totalAvailable.toLocaleString()+'</strong></span></div>'
-                + '<div style="overflow-x:auto;"><table class="wp-list-table widefat striped"><thead><tr>'
+            var summary = '<div class="os-report-summary">'
+                + reportStat('<?php esc_html_e("Matching Rows","olama-stores");?>', rows.length.toLocaleString(), 'primary')
+                + reportStat('<?php esc_html_e("On Hand","olama-stores");?>', totalOnHand.toLocaleString(), 'primary')
+                + reportStat('<?php esc_html_e("Reserved","olama-stores");?>', totalReserved.toLocaleString(), 'warning')
+                + reportStat('<?php esc_html_e("Available","olama-stores");?>', totalAvailable.toLocaleString(), 'success')
+                + '</div>';
+            var html = '<table class="wp-list-table widefat striped"><thead><tr>'
                 + '<th><?php esc_html_e("Item","olama-stores");?></th><th><?php esc_html_e("Warehouse","olama-stores");?></th>'
                 + '<th><?php esc_html_e("Category","olama-stores");?></th><th><?php esc_html_e("Unit","olama-stores");?></th>'
                 + '<th><?php esc_html_e("Provider","olama-stores");?></th><th><?php esc_html_e("Model","olama-stores");?></th>'
@@ -348,9 +411,9 @@
                     + '<td style="text-align:right;">'+esc(row.quantity_on_hand)+'</td><td style="text-align:right;">'+esc(row.quantity_reserved)+'</td>'
                     + '<td style="text-align:right;font-weight:700;">'+esc(row.quantity_available)+'</td></tr>';
             });
-            $('#os-custom-stock-table-wrap').html(html+'</tbody></table></div>');
+            $('#os-custom-stock-table-wrap').html(summary + reportTable(html+'</tbody></table>'));
         }).catch(function(error){
-            $('#os-custom-stock-table-wrap').html('<p class="os-error">'+esc(error.message||'<?php esc_html_e("Error loading the custom report.","olama-stores");?>')+'</p>');
+            $('#os-custom-stock-table-wrap').html(reportState(esc(error.message||'<?php esc_html_e("Error loading the custom report.","olama-stores");?>'), 'os-error'));
         });
     }
 
@@ -366,4 +429,3 @@
 
 })(jQuery);
 </script>
-</style>
