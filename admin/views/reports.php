@@ -25,6 +25,9 @@
         #os-reports-page #os-custom-report-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:end; gap:16px; }
         #os-reports-page #os-custom-report-filters .os-report-filter { min-width:0; }
         #os-reports-page #os-custom-report-filters .os-report-actions { grid-column:1 / -1; justify-content:flex-end; padding-top:14px; border-top:1px solid #edf2f7; }
+        #os-reports-page #rpt-movements .os-report-filter-wide { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); flex:1 0 100%; order:2; gap:10px; box-sizing:border-box; }
+        #os-reports-page #rpt-movements .os-report-filter-wide label { grid-column:1 / -1; }
+        #os-reports-page #rpt-movements .os-report-actions { width:100%; order:3; justify-content:flex-end; padding-top:14px; border-top:1px solid #edf2f7; }
         #os-reports-page .os-report-results { min-height:110px; }
         #os-reports-page .os-report-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:0 0 16px; }
         #os-reports-page .os-report-stat { position:relative; overflow:hidden; padding:16px 18px; border:1px solid var(--report-border); border-radius:11px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.05); }
@@ -48,7 +51,7 @@
         #os-reports-page .os-report-progress-value { height:100%; border-radius:99px; background:var(--report-blue); }
         @media (max-width:1100px) { #os-reports-page #os-custom-report-filters { grid-template-columns:repeat(3,minmax(0,1fr)); } }
         @media (max-width:900px) { #os-reports-page .os-report-summary { grid-template-columns:repeat(2,minmax(130px,1fr)); } #os-reports-page .nav-tab-wrapper { overflow-x:auto; } #os-reports-page .nav-tab { flex:0 0 auto; } #os-reports-page #os-custom-report-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-        @media (max-width:600px) { #os-reports-page .os-report-filter { flex-basis:100%; } #os-reports-page .os-report-actions { width:100%; } #os-reports-page .os-report-actions .button { flex:1; } #os-reports-page .os-report-summary { grid-template-columns:1fr 1fr; } #os-reports-page #os-custom-report-filters { grid-template-columns:1fr; } }
+        @media (max-width:600px) { #os-reports-page .os-report-filter { flex-basis:100%; } #os-reports-page .os-report-actions { width:100%; } #os-reports-page .os-report-actions .button { flex:1; } #os-reports-page .os-report-summary { grid-template-columns:1fr 1fr; } #os-reports-page #os-custom-report-filters { grid-template-columns:1fr; } #os-reports-page #rpt-movements .os-report-filter-wide { grid-template-columns:1fr; } #os-reports-page #rpt-movements .os-report-filter-wide label { grid-column:auto; } }
     </style>
 
     <!-- REC-18, REC-19: Tab Navigation -->
