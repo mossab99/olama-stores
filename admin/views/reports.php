@@ -157,8 +157,8 @@
         fillReportFilter('#os-cr-unit', data[1], 'name');
         fillReportFilter('#os-cr-provider', data[2], 'company_name');
         fillReportFilter('#os-cr-model', data[3], 'name');
-        fillReportFilter('#os-cr-fabric', data[4], 'name');
-        fillReportFilter('#os-cr-color', data[5], 'name');
+        fillReportFilter('#os-cr-fabric', data[4], 'name', 'name');
+        fillReportFilter('#os-cr-color', data[5], 'name', 'name');
         fillReportFilter('#os-cr-size', data[6], 'name', 'name');
     });
 

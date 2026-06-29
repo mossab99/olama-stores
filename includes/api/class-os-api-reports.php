@@ -100,6 +100,21 @@ class OS_API_Reports {
         $provider_value  = trim( (string) $request->get_param( 'provider_id' ) );
         $model_value     = trim( (string) $request->get_param( 'model_id' ) );
 
+        // Attribute dropdowns historically submitted row IDs, while item
+        // specifications store their display names. Accept both formats so
+        // cached report pages and current pages return the same results.
+        foreach ( array( 'fabric' => 'fabrics', 'color' => 'colors' ) as $key => $table ) {
+            if ( $filters[ $key ] !== '' && ctype_digit( $filters[ $key ] ) ) {
+                $attribute_name = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT name FROM {$wpdb->prefix}os_{$table} WHERE id = %d",
+                    (int) $filters[ $key ]
+                ) );
+                if ( $attribute_name !== null ) {
+                    $filters[ $key ] = (string) $attribute_name;
+                }
+            }
+        }
+
         $where  = array( 'i.is_active = 1' );
         $params = array();
         if ( $warehouse_value !== '' ) {
