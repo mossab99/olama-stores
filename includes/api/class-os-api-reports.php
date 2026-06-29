@@ -51,6 +51,11 @@ class OS_API_Reports {
             'callback'            => array( __CLASS__, 'custody_aging' ),
             'permission_callback' => $perm,
         ) );
+        register_rest_route( self::NS, '/reports/custom-stock', array(
+            'methods'             => 'GET',
+            'callback'            => array( __CLASS__, 'custom_stock' ),
+            'permission_callback' => $perm,
+        ) );
         // REC-14: Year-end transition
         register_rest_route( self::NS, '/reports/year-transition/summary', array(
             'methods'             => 'GET',
@@ -70,6 +75,79 @@ class OS_API_Reports {
             'category_id'  => (int) $request->get_param( 'category_id' ),
         ) );
         return rest_ensure_response( OS_Stock_Service::get_stock_levels( $args ) );
+    }
+
+    /**
+     * Flexible stock availability report. Item attributes stored in the
+     * specifications JSON are combined with the relational item fields.
+     */
+    public static function custom_stock( $request ) {
+        global $wpdb;
+
+        $filters = array(
+            'warehouse_id' => (int) $request->get_param( 'warehouse_id' ),
+            'category_id'  => (int) $request->get_param( 'category_id' ),
+            'unit_id'      => (int) $request->get_param( 'unit_id' ),
+            'provider_id'  => (int) $request->get_param( 'provider_id' ),
+            'model_id'     => (int) $request->get_param( 'model_id' ),
+            'fabric'       => sanitize_text_field( (string) $request->get_param( 'fabric' ) ),
+            'color'        => sanitize_text_field( (string) $request->get_param( 'color' ) ),
+            'size'         => sanitize_text_field( (string) $request->get_param( 'size' ) ),
+        );
+
+        $where  = array( 'i.is_active = 1' );
+        $params = array();
+        $columns = array(
+            'warehouse_id' => 's.warehouse_id',
+            'category_id'  => 'i.category_id',
+            'unit_id'      => 'i.unit_id',
+            'provider_id'  => 'i.provider_id',
+        );
+        foreach ( $columns as $key => $column ) {
+            if ( $filters[ $key ] ) {
+                $where[]  = "$column = %d";
+                $params[] = $filters[ $key ];
+            }
+        }
+
+        $spec = "CASE WHEN JSON_VALID(i.specifications) THEN i.specifications ELSE '{}' END";
+        if ( $filters['model_id'] ) {
+            $where[]  = "CAST(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.model_id')) AS UNSIGNED) = %d";
+            $params[] = $filters['model_id'];
+        }
+        foreach ( array( 'fabric', 'color', 'size' ) as $key ) {
+            if ( $filters[ $key ] !== '' ) {
+                $where[]  = "JSON_UNQUOTE(JSON_EXTRACT($spec, '$.$key')) = %s";
+                $params[] = $filters[ $key ];
+            }
+        }
+
+        $sql = "SELECT
+                    i.id AS item_id, i.sku, i.name AS item_name,
+                    w.id AS warehouse_id, w.name AS warehouse_name,
+                    c.name AS category_name, u.name AS unit_name, u.symbol AS unit_symbol,
+                    p.company_name AS provider_name, cm.name AS model_name,
+                    JSON_UNQUOTE(JSON_EXTRACT($spec, '$.fabric')) AS fabric,
+                    JSON_UNQUOTE(JSON_EXTRACT($spec, '$.color')) AS color,
+                    JSON_UNQUOTE(JSON_EXTRACT($spec, '$.size')) AS size,
+                    s.quantity_on_hand, s.quantity_reserved,
+                    (s.quantity_on_hand - s.quantity_reserved) AS quantity_available
+                FROM {$wpdb->prefix}os_stock s
+                INNER JOIN {$wpdb->prefix}os_items i ON i.id = s.item_id
+                INNER JOIN {$wpdb->prefix}os_warehouses w ON w.id = s.warehouse_id
+                LEFT JOIN {$wpdb->prefix}os_categories c ON c.id = i.category_id
+                LEFT JOIN {$wpdb->prefix}os_units u ON u.id = i.unit_id
+                LEFT JOIN {$wpdb->prefix}os_providers p ON p.id = i.provider_id
+                LEFT JOIN {$wpdb->prefix}os_custom_models cm
+                    ON cm.id = CAST(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.model_id')) AS UNSIGNED)
+                WHERE " . implode( ' AND ', $where ) . "
+                ORDER BY i.name ASC, w.name ASC";
+
+        $rows = $params
+            ? $wpdb->get_results( $wpdb->prepare( $sql, ...$params ) )
+            : $wpdb->get_results( $sql );
+
+        return rest_ensure_response( $rows ?: array() );
     }
 
     public static function item_movements( $request ) {

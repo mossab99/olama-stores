@@ -16,6 +16,9 @@
         <a href="#rpt-custody-aging" class="nav-tab" data-rpt-tab="custody-aging">
             <span class="dashicons dashicons-clock"></span> <?php esc_html_e( 'Custody Aging', 'olama-stores' ); ?>
         </a>
+        <a href="#rpt-custom-stock" class="nav-tab" data-rpt-tab="custom-stock">
+            <span class="dashicons dashicons-filter"></span> <?php esc_html_e( 'Custom Reports', 'olama-stores' ); ?>
+        </a>
     </div>
 
     <!-- ── TAB: Stock Movements (existing) ──────────────────────────────────── -->
@@ -79,6 +82,22 @@
         </div>
     </div>
 
+    <div id="rpt-custom-stock" class="os-rpt-tab-content" style="display:none; padding-top:16px;">
+        <p class="description"><?php esc_html_e( 'Combine any filters below to analyze current stock availability.', 'olama-stores' ); ?></p>
+        <div class="os-filters tablenav top" id="os-custom-report-filters" style="height:auto; display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px;">
+            <select id="os-cr-warehouse"><option value=""><?php esc_html_e( 'All Warehouses', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-category"><option value=""><?php esc_html_e( 'All Categories', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-unit"><option value=""><?php esc_html_e( 'All Units', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-provider"><option value=""><?php esc_html_e( 'All Providers', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-model"><option value=""><?php esc_html_e( 'All Models', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-fabric"><option value=""><?php esc_html_e( 'All Fabrics', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-color"><option value=""><?php esc_html_e( 'All Colors', 'olama-stores' ); ?></option></select>
+            <select id="os-cr-size"><option value=""><?php esc_html_e( 'All Sizes', 'olama-stores' ); ?></option></select>
+            <button type="button" class="button" id="os-cr-reset"><?php esc_html_e( 'Reset', 'olama-stores' ); ?></button>
+        </div>
+        <div id="os-custom-stock-table-wrap"><p><?php esc_html_e( 'Loading stock availability…', 'olama-stores' ); ?></p></div>
+    </div>
+
 </div>
 <script>
 (function($){
@@ -113,6 +132,33 @@
         var opts='<option value=""><?php esc_html_e("All Warehouses","olama-stores");?></option>';
         r.forEach(function(w){ opts+='<option value="'+w.id+'">'+w.name+'</option>'; });
         $('#os-rpt-warehouse').html(opts);
+        fillReportFilter('#os-cr-warehouse', r, 'name');
+    });
+
+    function esc(value) { return $('<div>').text(value == null ? '' : value).html(); }
+    function fillReportFilter(selector, rows, labelKey) {
+        var $select = $(selector), first = $select.find('option').first().prop('outerHTML');
+        var options = first;
+        rows.forEach(function(row){ options += '<option value="'+esc(row.id)+'">'+esc(row[labelKey])+'</option>'; });
+        $select.html(options);
+    }
+
+    Promise.all([
+        wp.apiFetch({path:'/olama-stores/v1/categories'}),
+        wp.apiFetch({path:'/olama-stores/v1/units'}),
+        wp.apiFetch({path:'/olama-stores/v1/providers'}),
+        wp.apiFetch({path:'/olama-stores/v1/custom-models'}),
+        wp.apiFetch({path:'/olama-stores/v1/fabrics'}),
+        wp.apiFetch({path:'/olama-stores/v1/colors'}),
+        wp.apiFetch({path:'/olama-stores/v1/sizes'})
+    ]).then(function(data){
+        fillReportFilter('#os-cr-category', data[0], 'name');
+        fillReportFilter('#os-cr-unit', data[1], 'name');
+        fillReportFilter('#os-cr-provider', data[2], 'company_name');
+        fillReportFilter('#os-cr-model', data[3], 'name');
+        fillReportFilter('#os-cr-fabric', data[4], 'name');
+        fillReportFilter('#os-cr-color', data[5], 'name');
+        fillReportFilter('#os-cr-size', data[6], 'name');
     });
 
     // REC-12: Pre-fill date range with active academic year start → today
@@ -252,6 +298,70 @@
         window.location = olamaStores.apiRoot + '/reports/export/assignments?status=active&assignee_type=' + type
             + '&academic_year_id=' + (olamaStores.activeYearId||'') + '&_wpnonce=' + olamaStores.nonce;
     });
+
+    // Dynamic custom stock report.
+    var customReportTimer;
+    function loadCustomStock() {
+        var filterMap = {
+            warehouse_id: '#os-cr-warehouse', category_id: '#os-cr-category',
+            unit_id: '#os-cr-unit', provider_id: '#os-cr-provider',
+            model_id: '#os-cr-model', fabric: '#os-cr-fabric',
+            color: '#os-cr-color', size: '#os-cr-size'
+        };
+        var query = [];
+        $.each(filterMap, function(key, selector){
+            var value = $(selector).val();
+            if (value) query.push(encodeURIComponent(key)+'='+encodeURIComponent(value));
+        });
+        $('#os-custom-stock-table-wrap').html('<span class="os-loading"><?php esc_html_e("Loading…","olama-stores");?></span>');
+        wp.apiFetch({path:'/olama-stores/v1/reports/custom-stock'+(query.length ? '?'+query.join('&') : '')}).then(function(rows){
+            if (!rows.length) {
+                $('#os-custom-stock-table-wrap').html('<p><?php esc_html_e("No stock items match the selected filters.","olama-stores");?></p>');
+                return;
+            }
+            var totalOnHand = 0, totalReserved = 0, totalAvailable = 0;
+            rows.forEach(function(row){
+                totalOnHand += parseInt(row.quantity_on_hand, 10) || 0;
+                totalReserved += parseInt(row.quantity_reserved, 10) || 0;
+                totalAvailable += parseInt(row.quantity_available, 10) || 0;
+            });
+            var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 12px;">'
+                + '<strong><?php esc_html_e("Matching stock rows:","olama-stores");?> '+rows.length+'</strong>'
+                + '<span><?php esc_html_e("On hand:","olama-stores");?> <strong>'+totalOnHand.toLocaleString()+'</strong></span>'
+                + '<span><?php esc_html_e("Reserved:","olama-stores");?> <strong>'+totalReserved.toLocaleString()+'</strong></span>'
+                + '<span><?php esc_html_e("Available:","olama-stores");?> <strong>'+totalAvailable.toLocaleString()+'</strong></span></div>'
+                + '<div style="overflow-x:auto;"><table class="wp-list-table widefat striped"><thead><tr>'
+                + '<th><?php esc_html_e("Item","olama-stores");?></th><th><?php esc_html_e("Warehouse","olama-stores");?></th>'
+                + '<th><?php esc_html_e("Category","olama-stores");?></th><th><?php esc_html_e("Unit","olama-stores");?></th>'
+                + '<th><?php esc_html_e("Provider","olama-stores");?></th><th><?php esc_html_e("Model","olama-stores");?></th>'
+                + '<th><?php esc_html_e("Fabric","olama-stores");?></th><th><?php esc_html_e("Color","olama-stores");?></th>'
+                + '<th><?php esc_html_e("Size","olama-stores");?></th><th style="text-align:right;"><?php esc_html_e("On Hand","olama-stores");?></th>'
+                + '<th style="text-align:right;"><?php esc_html_e("Reserved","olama-stores");?></th><th style="text-align:right;"><?php esc_html_e("Available","olama-stores");?></th>'
+                + '</tr></thead><tbody>';
+            rows.forEach(function(row){
+                html += '<tr><td><strong>'+esc(row.item_name)+'</strong><br><code>'+esc(row.sku)+'</code></td>'
+                    + '<td>'+esc(row.warehouse_name)+'</td><td>'+esc(row.category_name||'—')+'</td>'
+                    + '<td>'+esc(row.unit_symbol||row.unit_name||'—')+'</td><td>'+esc(row.provider_name||'—')+'</td>'
+                    + '<td>'+esc(row.model_name||'—')+'</td><td>'+esc(row.fabric||'—')+'</td>'
+                    + '<td>'+esc(row.color||'—')+'</td><td>'+esc(row.size||'—')+'</td>'
+                    + '<td style="text-align:right;">'+esc(row.quantity_on_hand)+'</td><td style="text-align:right;">'+esc(row.quantity_reserved)+'</td>'
+                    + '<td style="text-align:right;font-weight:700;">'+esc(row.quantity_available)+'</td></tr>';
+            });
+            $('#os-custom-stock-table-wrap').html(html+'</tbody></table></div>');
+        }).catch(function(error){
+            $('#os-custom-stock-table-wrap').html('<p class="os-error">'+esc(error.message||'<?php esc_html_e("Error loading the custom report.","olama-stores");?>')+'</p>');
+        });
+    }
+
+    $('#os-custom-report-filters').on('change', 'select', function(){
+        clearTimeout(customReportTimer);
+        customReportTimer = setTimeout(loadCustomStock, 150);
+    });
+    $('#os-cr-reset').on('click', function(){
+        $('#os-custom-report-filters select').val('');
+        loadCustomStock();
+    });
+    $('[data-rpt-tab="custom-stock"]').one('click', loadCustomStock);
 
 })(jQuery);
 </script>
