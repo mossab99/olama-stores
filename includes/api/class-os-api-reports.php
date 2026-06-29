@@ -115,11 +115,19 @@ class OS_API_Reports {
             $where[]  = "CAST(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.model_id')) AS UNSIGNED) = %d";
             $params[] = $filters['model_id'];
         }
-        foreach ( array( 'fabric', 'color', 'size' ) as $key ) {
+        foreach ( array( 'fabric', 'color' ) as $key ) {
             if ( $filters[ $key ] !== '' ) {
-                $where[]  = "JSON_UNQUOTE(JSON_EXTRACT($spec, '$.$key')) = %s";
+                $where[]  = "LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.$key')))) = LOWER(TRIM(%s))";
                 $params[] = $filters[ $key ];
             }
+        }
+        if ( $filters['size'] !== '' ) {
+            $where[]  = "(
+                LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT($spec, '$.size')))) = LOWER(TRIM(%s))
+                OR LOWER(TRIM(i.name)) LIKE CONCAT('%', LOWER(TRIM(%s)), '%')
+            )";
+            $params[] = $filters['size'];
+            $params[] = $filters['size'];
         }
 
         $sql = "SELECT

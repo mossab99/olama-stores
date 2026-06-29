@@ -136,10 +136,11 @@
     });
 
     function esc(value) { return $('<div>').text(value == null ? '' : value).html(); }
-    function fillReportFilter(selector, rows, labelKey) {
+    function fillReportFilter(selector, rows, labelKey, valueKey) {
         var $select = $(selector), first = $select.find('option').first().prop('outerHTML');
         var options = first;
-        rows.forEach(function(row){ options += '<option value="'+esc(row.id)+'">'+esc(row[labelKey])+'</option>'; });
+        valueKey = valueKey || 'id';
+        rows.forEach(function(row){ options += '<option value="'+esc(row[valueKey])+'">'+esc(row[labelKey])+'</option>'; });
         $select.html(options);
     }
 
@@ -158,7 +159,7 @@
         fillReportFilter('#os-cr-model', data[3], 'name');
         fillReportFilter('#os-cr-fabric', data[4], 'name');
         fillReportFilter('#os-cr-color', data[5], 'name');
-        fillReportFilter('#os-cr-size', data[6], 'name');
+        fillReportFilter('#os-cr-size', data[6], 'name', 'name');
     });
 
     // REC-12: Pre-fill date range with active academic year start → today
