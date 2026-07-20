@@ -132,10 +132,6 @@ class OS_Roles {
     public static function can( $cap, $user_id = null ) {
         if ( ! $user_id ) { $user_id = get_current_user_id(); }
         if ( ! $user_id ) { return false; }
-        if ( user_can( $user_id, 'manage_options' ) ) { return true; }
-        // Olama School supervisors get full Stores access
-        $user = get_userdata( $user_id );
-        if ( $user && in_array( 'supervisor', (array) $user->roles, true ) ) { return true; }
         return user_can( $user_id, $cap );
     }
 }

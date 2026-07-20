@@ -82,7 +82,6 @@ function os_activate() {
         if ( ! class_exists( 'OS_Activator' ) ) { require_once OS_PATH . 'includes/class-os-activator.php'; }
         if ( ! class_exists( 'OS_Roles' ) )     { require_once OS_PATH . 'includes/class-os-roles.php'; }
         OS_Activator::create_tables();
-        OS_Roles::add_roles_and_caps();
         update_option( 'os_version', OS_VERSION );
         flush_rewrite_rules();
     } catch ( Exception $e ) {
@@ -108,7 +107,6 @@ function os_init() {
     $installed = get_option( 'os_version', '0' );
     if ( version_compare( $installed, OS_VERSION, '<' ) ) {
         OS_Activator::create_tables();
-        OS_Roles::add_roles_and_caps();
         update_option( 'os_version', OS_VERSION );
     }
 
