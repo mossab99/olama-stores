@@ -33,17 +33,27 @@ class OS_Entitlement {
 
         $where_sql = ! empty( $where ) ? ' WHERE ' . implode( ' AND ', $where ) : '';
 
-        $sql = "SELECT e.*, m.name AS model_name, g.grade_name
+        $sql = "SELECT e.*, m.name AS model_name
                 FROM {$p}os_entitlements e
                 LEFT JOIN {$p}os_custom_models m ON e.custom_model_id = m.id
-                LEFT JOIN {$p}olama_grades g ON e.grade_id = g.id
                 $where_sql
-                ORDER BY g.grade_level ASC, m.name ASC";
+                ORDER BY e.grade_id ASC, m.name ASC";
 
+        $rows = array();
         if ( ! empty( $params ) ) {
-            return $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
+            $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
+        } else {
+            $rows = $wpdb->get_results( $sql );
         }
-        return $wpdb->get_results( $sql );
+
+        $grade_names = array();
+        foreach ( OS_School_Integration::get_grades() as $grade ) {
+            $grade_names[ (string) $grade->id ] = (string) $grade->grade_name;
+        }
+        foreach ( $rows as $row ) {
+            $row->grade_name = $grade_names[ (string) $row->grade_id ] ?? (string) $row->grade_id;
+        }
+        return $rows;
     }
 
     /**

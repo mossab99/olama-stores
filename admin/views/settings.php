@@ -241,11 +241,11 @@
 
     <!-- Integration Tab -->
     <div id="tab-integration" class="os-tab-content" style="display:none;">
-        <h2><?php esc_html_e( 'Olama School Integration', 'olama-stores' ); ?></h2>
-        <?php if ( class_exists( 'Olama_School_DB' ) ): ?>
+        <h2><?php esc_html_e( 'Olama Core Integration', 'olama-stores' ); ?></h2>
+        <?php if ( OS_School_Integration::is_core_available() ): ?>
             <div class="notice notice-success inline"><p>
                 <strong><?php esc_html_e( 'Connected', 'olama-stores' ); ?></strong>
-                — <?php printf( esc_html__( 'Olama School System %s is active.', 'olama-stores' ), esc_html( OLAMA_SCHOOL_VERSION ) ); ?>
+                — <?php printf( esc_html__( 'Olama Core %s is the active people and academic data source.', 'olama-stores' ), esc_html( OLAMA_CORE_VERSION ) ); ?>
             </p></div>
             <table class="form-table">
                 <tr>
@@ -257,19 +257,19 @@
                 </tr>
                 <tr>
                     <th><?php esc_html_e( 'Employee Source', 'olama-stores' ); ?></th>
-                    <td><?php esc_html_e( 'Olama_School_Teacher::get_teachers() — WordPress users with school staff roles.', 'olama-stores' ); ?></td>
+                    <td><?php esc_html_e( 'Olama Core employees table — synchronized employee profiles and employee numbers.', 'olama-stores' ); ?></td>
                 </tr>
                 <tr>
                     <th><?php esc_html_e( 'Student Source', 'olama-stores' ); ?></th>
                     <td><?php
-                        $count = class_exists( 'Olama_School_Student' ) ? count( Olama_School_Student::get_students( array( 'academic_year_id' => os_get_active_year_id() ) ) ) : 0;
-                        printf( esc_html__( 'Olama_School_Student::get_students() — %d students enrolled in current year.', 'olama-stores' ), $count );
+                        $count = count( OS_School_Integration::get_students( array( 'academic_year_id' => os_get_active_year_id() ) ) );
+                        printf( esc_html__( 'Olama Core students and student-year tables — %d students in the current snapshot.', 'olama-stores' ), $count );
                     ?></td>
                 </tr>
             </table>
         <?php else: ?>
             <div class="notice notice-warning inline"><p>
-                <?php esc_html_e( 'Olama School System is not active. Employee and student data will not be available for assignments.', 'olama-stores' ); ?>
+                <?php esc_html_e( 'Olama Core is not active. Stores will use legacy school data when available.', 'olama-stores' ); ?>
             </p></div>
         <?php endif; ?>
     </div>

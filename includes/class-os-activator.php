@@ -245,8 +245,8 @@ class OS_Activator {
         // ── os_assignments ────────────────────────────────────────────────────
         // Correction #1: academic_year_id INT
         // Correction #2: assignee_id VARCHAR(50)
-        //   - For employees: stores WP user ID cast to string  (e.g. "42")
-        //   - For students:  stores student_uid                (e.g. "STU-2024-001")
+        //   - For employees: stores the Olama Core employee_id (historical rows may contain a WP user ID)
+        //   - For students:  stores the Olama Core student_uid
         //   Use assignee_type to disambiguate.
         // status / assignee_type VARCHAR (not ENUM)
         $tables[] = "CREATE TABLE {$p}os_assignments (
@@ -269,6 +269,24 @@ class OS_Activator {
             KEY idx_status (status),
             KEY item_id (item_id),
             KEY academic_year_id (academic_year_id)
+        ) $col;";
+
+        // ── os_custom_withdrawal_approvals ───────────────────────────────────
+        // Missing rows are denied by default. Approval is per student and year.
+        $tables[] = "CREATE TABLE {$p}os_custom_withdrawal_approvals (
+            id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            student_uid         VARCHAR(100)    NOT NULL,
+            family_uid          VARCHAR(100)    NOT NULL,
+            academic_year_id    INT UNSIGNED    NOT NULL,
+            is_approved         TINYINT(1)      NOT NULL DEFAULT 0,
+            approved_by         BIGINT UNSIGNED DEFAULT NULL,
+            approved_at         DATETIME        DEFAULT NULL,
+            updated_by          BIGINT UNSIGNED NOT NULL,
+            updated_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY unique_student_year (student_uid, academic_year_id),
+            KEY family_year (family_uid, academic_year_id),
+            KEY approval_status (is_approved)
         ) $col;";
 
         // ── os_assignment_returns ─────────────────────────────────────────────

@@ -372,11 +372,16 @@ class OS_API_Items {
 
     // ── Grades & Subjects (from eval 02) ──────────────────────────────────────
     public static function get_grades() {
-        if ( ! class_exists( 'Olama_School_Grade' ) ) { return rest_ensure_response( array() ); }
-        return rest_ensure_response( Olama_School_Grade::get_grades() );
+        return rest_ensure_response( OS_School_Integration::get_grades() );
     }
 
     public static function get_subjects( $request ) {
+        if ( OS_School_Integration::is_core_available() ) {
+            return rest_ensure_response( olama_core()->academic()->grade_subjects(
+                OS_School_Integration::resolve_study_year( os_get_active_year_id() ),
+                sanitize_text_field( (string) $request['grade_id'] )
+            ) );
+        }
         if ( ! class_exists( 'Olama_School_Subject' ) ) { return rest_ensure_response( array() ); }
         return rest_ensure_response( Olama_School_Subject::get_by_grade( (int) $request['grade_id'], true ) );
     }

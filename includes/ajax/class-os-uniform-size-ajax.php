@@ -39,15 +39,17 @@ class OS_Uniform_Size_Ajax {
             wp_send_json_error( array( 'message' => 'grade_id and year_id are required.' ) );
         }
 
-        global $wpdb;
-        $sections = $wpdb->get_results( $wpdb->prepare(
-            "SELECT id, section_name
-             FROM {$wpdb->prefix}olama_sections
-             WHERE grade_id = %d AND academic_year_id = %d
-             ORDER BY section_name ASC",
-            $grade_id,
-            $year_id
-        ), ARRAY_A );
+        $sections = array_values( array_map( static function ( $section ) {
+            return array(
+                'id'           => $section->id,
+                'section_name' => $section->section_name,
+            );
+        }, array_filter(
+            OS_School_Integration::get_sections( $year_id ),
+            static function ( $section ) use ( $grade_id ) {
+                return (string) ( $section->grade_id ?? '' ) === (string) $grade_id;
+            }
+        ) ) );
 
         wp_send_json_success( array( 'sections' => $sections ?: array() ) );
     }
@@ -65,23 +67,12 @@ class OS_Uniform_Size_Ajax {
             wp_send_json_error( array( 'message' => 'year_id and grade_id are required.' ) );
         }
 
-        // Resolve year_name and grade_name for display and DB storage
-        global $wpdb;
-        $year_row  = $wpdb->get_row( $wpdb->prepare(
-            "SELECT year_name FROM {$wpdb->prefix}olama_academic_years WHERE id = %d",
-            $year_id
-        ) );
-        $grade_row = $wpdb->get_row( $wpdb->prepare(
-            "SELECT grade_name FROM {$wpdb->prefix}olama_grades WHERE id = %d",
-            $grade_id
-        ) );
-
-        if ( ! $year_row || ! $grade_row ) {
+        // Resolve labels from the Core academic snapshot.
+        $year_name  = self::get_year_name( $year_id );
+        $grade_name = self::get_grade_name( $grade_id );
+        if ( ! $year_name || ! $grade_name ) {
             wp_send_json_error( array( 'message' => 'Invalid year_id or grade_id.' ) );
         }
-
-        $year_name  = $year_row->year_name;
-        $grade_name = $grade_row->grade_name;
 
         // Load students from Olama School enrollment
         $students = self::fetch_students( $year_id, $grade_id, $section_id );
@@ -149,17 +140,9 @@ class OS_Uniform_Size_Ajax {
             wp_send_json_error( array( 'message' => 'Missing required fields.' ) );
         }
 
-        global $wpdb;
-        $year_row  = $wpdb->get_row( $wpdb->prepare(
-            "SELECT year_name FROM {$wpdb->prefix}olama_academic_years WHERE id = %d", $year_id ) );
-        $grade_row = $wpdb->get_row( $wpdb->prepare(
-            "SELECT grade_name FROM {$wpdb->prefix}olama_grades WHERE id = %d", $grade_id ) );
-        $section_row = $section_id ? $wpdb->get_row( $wpdb->prepare(
-            "SELECT section_name FROM {$wpdb->prefix}olama_sections WHERE id = %d", $section_id ) ) : null;
-
-        $year_name    = $year_row  ? $year_row->year_name    : '';
-        $grade_name   = $grade_row ? $grade_row->grade_name  : '';
-        $section_name = $section_row ? $section_row->section_name : '';
+        $year_name    = self::get_year_name( $year_id );
+        $grade_name   = self::get_grade_name( $grade_id );
+        $section_name = self::get_section_name( $section_id, $year_id );
 
         $result = OS_Uniform_Size::save( array(
             'student_uid'      => $student_uid,
@@ -207,10 +190,7 @@ class OS_Uniform_Size_Ajax {
             wp_send_json_error( array( 'message' => 'Missing student_uid or year_id.' ) );
         }
 
-        global $wpdb;
-        $year_row = $wpdb->get_row( $wpdb->prepare(
-            "SELECT year_name FROM {$wpdb->prefix}olama_academic_years WHERE id = %d", $year_id ) );
-        $year_name = $year_row ? $year_row->year_name : '';
+        $year_name = self::get_year_name( $year_id );
 
         $ok = OS_Uniform_Size::delete( $student_uid, $year_name );
         if ( ! $ok ) {
@@ -228,9 +208,7 @@ class OS_Uniform_Size_Ajax {
         $grade_id   = (int) ( $_POST['grade_id']   ?? 0 );
         $section_id = (int) ( $_POST['section_id'] ?? 0 );
 
-        global $wpdb;
-        $year_name = $wpdb->get_var( $wpdb->prepare(
-            "SELECT year_name FROM {$wpdb->prefix}olama_academic_years WHERE id = %d", $year_id ) );
+        $year_name = self::get_year_name( $year_id );
 
         $size_totals  = OS_Uniform_Size::get_size_totals_by_grade_id( $year_name, $grade_id );
         $all_students = self::fetch_students( $year_id, $grade_id, $section_id );
@@ -257,14 +235,8 @@ class OS_Uniform_Size_Ajax {
         $grade_id   = (int) ( $_POST['grade_id']   ?? 0 );
         $section_id = (int) ( $_POST['section_id'] ?? 0 );
 
-        global $wpdb;
-        $year_row  = $wpdb->get_row( $wpdb->prepare(
-            "SELECT year_name FROM {$wpdb->prefix}olama_academic_years WHERE id = %d", $year_id ) );
-        $grade_row = $wpdb->get_row( $wpdb->prepare(
-            "SELECT grade_name FROM {$wpdb->prefix}olama_grades WHERE id = %d", $grade_id ) );
-
-        $year_name  = $year_row  ? $year_row->year_name   : (string) $year_id;
-        $grade_name = $grade_row ? $grade_row->grade_name : (string) $grade_id;
+        $year_name  = self::get_year_name( $year_id ) ?: (string) $year_id;
+        $grade_name = self::get_grade_name( $grade_id ) ?: (string) $grade_id;
 
         $students  = self::fetch_students( $year_id, $grade_id, $section_id );
         $sized_map = OS_Uniform_Size::get_by_grade_id( $year_name, $grade_id, $section_id );
@@ -307,7 +279,7 @@ class OS_Uniform_Size_Ajax {
 
         global $wpdb;
         $year_name = $year_id
-            ? $wpdb->get_var( $wpdb->prepare( "SELECT year_name FROM {$wpdb->prefix}olama_academic_years WHERE id = %d", $year_id ) )
+            ? self::get_year_name( $year_id )
             : sanitize_text_field( wp_unslash( $_POST['academic_year'] ?? '' ) );
 
         if ( ! $year_name ) {
@@ -339,40 +311,41 @@ class OS_Uniform_Size_Ajax {
     }
 
     // ── Internal: fetch enrolled students ────────────────────────────────────────
-    /**
-     * Returns rows from olama_students joined to enrollment for the given year+grade+section.
-     *
-     * @param int $year_id
-     * @param int $grade_id
-     * @param int $section_id  0 = all sections for this grade
-     * @return array
-     */
     private static function fetch_students( int $year_id, int $grade_id, int $section_id = 0 ): array {
-        if ( ! class_exists( 'Olama_School_DB' ) ) {
-            return array();
+        $rows = OS_School_Integration::get_students( array_filter( array(
+            'academic_year_id' => $year_id,
+            'grade_id'         => $grade_id,
+            'section_id'       => $section_id,
+        ) ) );
+        return array_map( static function ( $student ) use ( $year_id ) {
+            $row = (array) $student;
+            $row['academic_year_id'] = $year_id;
+            return $row;
+        }, $rows );
+    }
+
+    private static function get_year_name( int $year_id ): string {
+        return OS_School_Integration::resolve_study_year( $year_id );
+    }
+
+    private static function get_grade_name( int $grade_id ): string {
+        foreach ( OS_School_Integration::get_grades() as $grade ) {
+            if ( (string) $grade->id === (string) $grade_id ) {
+                return (string) $grade->grade_name;
+            }
         }
-        global $wpdb;
+        return '';
+    }
 
-        $sql = "SELECT s.student_uid, s.student_name, g.grade_name, sec.section_name,
-                       sec.id AS section_id, e.academic_year_id
-                FROM {$wpdb->prefix}olama_students s
-                JOIN {$wpdb->prefix}olama_student_enrollment e   ON s.student_uid = e.student_uid
-                JOIN {$wpdb->prefix}olama_sections           sec ON e.section_id  = sec.id
-                JOIN {$wpdb->prefix}olama_grades             g   ON sec.grade_id  = g.id
-                WHERE e.academic_year_id = %d
-                  AND g.id = %d
-                  AND e.status = 'active'";
-
-        $params = array( $year_id, $grade_id );
-
-        if ( $section_id > 0 ) {
-            $sql     .= ' AND sec.id = %d';
-            $params[] = $section_id;
+    private static function get_section_name( int $section_id, int $year_id ): string {
+        if ( ! $section_id ) {
+            return '';
         }
-
-        $sql .= ' ORDER BY s.student_name ASC';
-
-        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
-        return $rows ?: array();
+        foreach ( OS_School_Integration::get_sections( $year_id ) as $section ) {
+            if ( (string) $section->id === (string) $section_id ) {
+                return (string) $section->section_name;
+            }
+        }
+        return '';
     }
 }

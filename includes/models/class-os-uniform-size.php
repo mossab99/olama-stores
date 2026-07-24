@@ -249,8 +249,19 @@ class OS_Uniform_Size {
         // If already a key
         if ( preg_match( '/^(KG\d+|G\d+(_\d+)?)$/', $name ) ) { return $name; }
 
-        // Try DB lookup for level
-        if ( class_exists( 'Olama_School_DB' ) ) {
+        // Try the Core academic snapshot first.
+        if ( class_exists( 'OS_School_Integration' ) && OS_School_Integration::is_core_available() ) {
+            foreach ( OS_School_Integration::get_grades() as $grade ) {
+                if ( (string) $grade->grade_name !== $grade_name ) {
+                    continue;
+                }
+                $level = (int) $grade->grade_level;
+                if ( $level === -2 ) return 'KG1';
+                if ( $level === -1 ) return 'KG2';
+                if ( $level >= 1 && $level <= 9 ) return 'G' . $level;
+                if ( $level >= 10 && $level <= 12 ) return 'G10_12';
+            }
+        } elseif ( class_exists( 'Olama_School_DB' ) ) {
             global $wpdb;
             $level = $wpdb->get_var( $wpdb->prepare(
                 "SELECT grade_level FROM {$wpdb->prefix}olama_grades WHERE grade_name = %s LIMIT 1",

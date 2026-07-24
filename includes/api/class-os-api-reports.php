@@ -374,13 +374,17 @@ class OS_API_Reports {
         global $wpdb;
         $year_id      = (int) $request->get_param( 'academic_year_id' ) ?: os_get_active_year_id();
         $assignee_type = sanitize_key( $request->get_param( 'assignee_type' ) ?: 'employee' );
+        $core_employees = $wpdb->prefix . 'olama_core_employees';
+        $employee_join = OS_School_Integration::is_core_available()
+            ? "LEFT JOIN {$core_employees} ce ON (a.assignee_type = 'employee' AND a.assignee_id = ce.employee_id)"
+            : 'LEFT JOIN (SELECT NULL AS employee_id, NULL AS full_name) ce ON 1=0';
 
         $rows = $wpdb->get_results( $wpdb->prepare(
             "SELECT
                 a.id,
                 a.assignee_id,
                 a.assignee_type,
-                COALESCE(u.display_name, a.assignee_id) AS assignee_name,
+                COALESCE(ce.full_name, u.display_name, a.assignee_id) AS assignee_name,
                 i.name AS item_name,
                 i.sku,
                 w.name AS warehouse_name,
@@ -392,6 +396,7 @@ class OS_API_Reports {
              FROM {$wpdb->prefix}os_assignments a
              LEFT JOIN {$wpdb->prefix}os_items i       ON a.item_id = i.id
              LEFT JOIN {$wpdb->prefix}os_warehouses w  ON a.warehouse_id = w.id
+             {$employee_join}
              LEFT JOIN {$wpdb->users} u                ON (a.assignee_type = 'employee' AND CAST(a.assignee_id AS UNSIGNED) = u.ID)
              WHERE a.status = 'active'
                AND a.academic_year_id = %d

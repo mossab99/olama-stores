@@ -325,6 +325,18 @@ class OS_Stock_Service {
 
         $grade_id = 0;
         if ( $assignee_type === 'student' ) {
+            $warehouse_type = $wpdb->get_var( $wpdb->prepare(
+                "SELECT type FROM {$wpdb->prefix}os_warehouses WHERE id = %d LIMIT 1",
+                $warehouse_id
+            ) );
+            if ( 'custom' === $warehouse_type && ! OS_Custom_Withdrawal_Approval::is_approved( $assignee_id, $academic_year_id ) ) {
+                return new WP_Error(
+                    'custom_withdrawal_not_approved',
+                    __( 'Custom withdrawal is blocked. Approve this student after confirming payment before issuing items.', 'olama-stores' ),
+                    array( 'status' => 403 )
+                );
+            }
+
             $student  = OS_School_Integration::get_student_by_uid( $assignee_id );
             $grade_id = $student ? (int) $student->grade_id : 0;
         }

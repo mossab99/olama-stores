@@ -10,6 +10,7 @@ class OS_Assignment {
 
     public static function get_list( $args = array() ) {
         global $wpdb;
+        $core_employees = $wpdb->prefix . 'olama_core_employees';
         $where  = array( '1=1' );
         $params = array();
 
@@ -35,12 +36,20 @@ class OS_Assignment {
         }
 
         $where_sql = implode( ' AND ', $where );
-        $sql = "SELECT a.*, i.name AS item_name, i.sku, i.specifications, w.name AS warehouse_name,
-                    u.display_name AS assignee_name
+        $employee_join = OS_School_Integration::is_core_available()
+            ? "LEFT JOIN {$core_employees} ce ON (a.assignee_type = 'employee' AND a.assignee_id = ce.employee_id)"
+            : 'LEFT JOIN (SELECT NULL AS employee_id, NULL AS full_name) ce ON 1=0';
+
+        $sql = "SELECT a.*, i.name AS item_name, i.sku, i.specifications,
+                    w.name AS warehouse_name, w.type AS warehouse_type,
+                    COALESCE(ce.full_name, u.display_name) AS assignee_name,
+                    issuer.display_name AS issued_by_name
                 FROM {$wpdb->prefix}os_assignments a
                 LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
                 LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
+                {$employee_join}
                 LEFT JOIN {$wpdb->users} u ON (a.assignee_type = 'employee' AND CAST(a.assignee_id AS UNSIGNED) = u.ID)
+                LEFT JOIN {$wpdb->users} issuer ON a.assigned_by = issuer.ID
                 WHERE $where_sql ORDER BY a.created_at DESC";
 
         $rows = $params
@@ -57,13 +66,21 @@ class OS_Assignment {
 
     public static function get( $id ) {
         global $wpdb;
+        $core_employees = $wpdb->prefix . 'olama_core_employees';
+        $employee_join = OS_School_Integration::is_core_available()
+            ? "LEFT JOIN {$core_employees} ce ON (a.assignee_type = 'employee' AND a.assignee_id = ce.employee_id)"
+            : 'LEFT JOIN (SELECT NULL AS employee_id, NULL AS full_name) ce ON 1=0';
         return $wpdb->get_row( $wpdb->prepare(
-            "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name,
-                 u.display_name AS assignee_name
+            "SELECT a.*, i.name AS item_name, i.sku,
+                 w.name AS warehouse_name, w.type AS warehouse_type,
+                 COALESCE(ce.full_name, u.display_name) AS assignee_name,
+                 issuer.display_name AS issued_by_name
              FROM {$wpdb->prefix}os_assignments a
              LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
              LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
+             {$employee_join}
              LEFT JOIN {$wpdb->users} u ON (a.assignee_type = 'employee' AND CAST(a.assignee_id AS UNSIGNED) = u.ID)
+             LEFT JOIN {$wpdb->users} issuer ON a.assigned_by = issuer.ID
              WHERE a.id = %d", $id
         ) );
     }

@@ -3,7 +3,7 @@
  * Plugin Name: Olama Stores
  * Plugin URI:  https://olama.online/olama-stores
  * Description: School warehouse management for Olama School System. Tracks inventory, stock movements, and employee/student item assignments.
- * Version:     1.0.51
+ * Version:     1.3.1
  * Author:      د. مصعب الحنيطي
  * Text Domain: olama-stores
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'OS_VERSION',           '1.2.1' );
+define( 'OS_VERSION',           '1.3.1' );
 define( 'OS_PATH',              plugin_dir_path( __FILE__ ) );
 define( 'OS_URL',               plugin_dir_url( __FILE__ ) );
 define( 'OS_FILE',              __FILE__ );
@@ -20,15 +20,18 @@ define( 'OS_MIN_SCHOOL_VER',    '2.4.0' );
 
 // ── Dependency guard ──────────────────────────────────────────────────────────
 function os_check_deps() {
-    if ( ! class_exists( 'Olama_School_DB' ) ) {
+    $has_core   = function_exists( 'olama_core' ) && class_exists( 'Olama_Core_Container' );
+    $has_school = class_exists( 'Olama_School_DB' );
+
+    if ( ! $has_core && ! $has_school ) {
         add_action( 'admin_notices', function () {
             echo '<div class="notice notice-error"><p><strong>Olama Stores:</strong> '
-                . esc_html__( 'Requires the Olama School System plugin to be active.', 'olama-stores' )
+                . esc_html__( 'Requires Olama Core (recommended) or the legacy Olama School System plugin to be active.', 'olama-stores' )
                 . '</p></div>';
         } );
         return false;
     }
-    if ( defined( 'OLAMA_SCHOOL_VERSION' ) && version_compare( OLAMA_SCHOOL_VERSION, OS_MIN_SCHOOL_VER, '<' ) ) {
+    if ( ! $has_core && defined( 'OLAMA_SCHOOL_VERSION' ) && version_compare( OLAMA_SCHOOL_VERSION, OS_MIN_SCHOOL_VER, '<' ) ) {
         add_action( 'admin_notices', function () {
             echo '<div class="notice notice-error"><p>'
                 . sprintf( esc_html__( 'Olama Stores requires Olama School System %s or higher.', 'olama-stores' ), OS_MIN_SCHOOL_VER )
@@ -51,6 +54,7 @@ function os_load_includes() {
     require_once OS_PATH . 'includes/models/class-os-item.php';
     require_once OS_PATH . 'includes/models/class-os-stock.php';
     require_once OS_PATH . 'includes/models/class-os-assignment.php';
+    require_once OS_PATH . 'includes/models/class-os-custom-withdrawal-approval.php';
     require_once OS_PATH . 'includes/models/class-os-movement.php';
     require_once OS_PATH . 'includes/models/class-os-warehouse.php';
     require_once OS_PATH . 'includes/api/class-os-api-items.php';
@@ -75,9 +79,11 @@ register_activation_hook( __FILE__, 'os_activate' );
 function os_activate() {
     ob_start();
     try {
-        if ( ! class_exists( 'Olama_School_DB' ) ) {
+        $has_core   = function_exists( 'olama_core' ) && class_exists( 'Olama_Core_Container' );
+        $has_school = class_exists( 'Olama_School_DB' );
+        if ( ! $has_core && ! $has_school ) {
             deactivate_plugins( OS_BASENAME );
-            wp_die( 'Olama Stores requires Olama School System to be active.', 'Dependency Error', array( 'back_link' => true ) );
+            wp_die( 'Olama Stores requires Olama Core or Olama School System to be active.', 'Dependency Error', array( 'back_link' => true ) );
         }
         if ( ! class_exists( 'OS_Activator' ) ) { require_once OS_PATH . 'includes/class-os-activator.php'; }
         if ( ! class_exists( 'OS_Roles' ) )     { require_once OS_PATH . 'includes/class-os-roles.php'; }
@@ -131,10 +137,10 @@ function os_init() {
 }
 
 // ── Global helpers ────────────────────────────────────────────────────────────
-/** Get active academic year ID from Olama School (Correction #1: returns INT, not VARCHAR). */
+/** Get the Core academic snapshot year as a stable numeric Store scope ID. */
 function os_get_active_year_id() {
-    if ( class_exists( 'Olama_School_Academic' ) ) {
-        $year = Olama_School_Academic::get_active_year();
+    if ( class_exists( 'OS_School_Integration' ) ) {
+        $year = OS_School_Integration::get_active_year();
         return $year ? (int) $year->id : null;
     }
     return null;
@@ -142,8 +148,8 @@ function os_get_active_year_id() {
 
 /** Get active academic year label. */
 function os_get_active_year_name() {
-    if ( class_exists( 'Olama_School_Academic' ) ) {
-        $year = Olama_School_Academic::get_active_year();
+    if ( class_exists( 'OS_School_Integration' ) ) {
+        $year = OS_School_Integration::get_active_year();
         return $year ? $year->year_name : '';
     }
     return '';

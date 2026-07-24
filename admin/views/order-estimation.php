@@ -16,8 +16,8 @@ $saved_drafts = get_option( 'os_estimation_drafts', array() );
 $saved_distribution = get_option( 'os_estimation_distribution', null );
 
 // ── Olama School integration: active year & semester ─────────────────────────
-$active_year     = class_exists( 'Olama_School_Academic' ) ? Olama_School_Academic::get_active_year() : null;
-$active_semester = ( $active_year && class_exists( 'Olama_School_Academic' ) )
+$active_year     = OS_School_Integration::get_active_year();
+$active_semester = ( $active_year && class_exists( 'Olama_School_Academic' ) && empty( $active_year->data_source ) )
     ? Olama_School_Academic::get_active_semester( $active_year->id )
     : null;
 
@@ -27,9 +27,7 @@ $active_sem_id    = $active_semester ? (int) $active_semester->id              :
 $active_sem_name  = $active_semester ? esc_html( $active_semester->semester_name ) : '';
 
 // ── Grades from Olama School DB ───────────────────────────────────────────────
-$school_grades = class_exists( 'Olama_School_Grade' )
-    ? Olama_School_Grade::get_grades()
-    : array();
+$school_grades = OS_School_Integration::get_grades();
 
 // ── Custom Models for estimation survey filter ─────────────────────────────────
 global $wpdb;

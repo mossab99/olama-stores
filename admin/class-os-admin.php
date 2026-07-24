@@ -42,8 +42,8 @@ class OS_Admin
             'activeYearId'   => os_get_active_year_id(),
             'activeYearName' => os_get_active_year_name(),
             'activeYearStart' => ( function() {
-                if ( class_exists( 'Olama_School_Academic' ) ) {
-                    $year = Olama_School_Academic::get_active_year();
+                if ( class_exists( 'OS_School_Integration' ) ) {
+                    $year = OS_School_Integration::get_active_year();
                     if ( $year && ! empty( $year->start_date ) ) {
                         return $year->start_date; // expects 'Y-m-d' format
                     }

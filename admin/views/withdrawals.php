@@ -1,4 +1,8 @@
-<?php if ( ! defined( 'ABSPATH' ) ) { exit; } ?>
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+$custom_withdrawal_nonce = wp_create_nonce( 'wp_rest' );
+?>
 <div class="wrap os-wrap" id="os-withdrawals-page">
     <h1 class="os-page-title">
         <span class="dashicons dashicons-cart"></span>
@@ -10,6 +14,76 @@
         </button>
         <span class="os-year-badge"><?php echo esc_html( os_get_active_year_name() ); ?></span>
     </h1>
+
+    <nav class="os-cwa-tabs" id="os-cwa-tab-nav">
+        <button type="button" class="os-cwa-tab active" data-tab="os-cwa-approval-tab">
+            <span class="dashicons dashicons-yes-alt"></span>
+            <?php esc_html_e( '1. Withdrawal Approval', 'olama-stores' ); ?>
+        </button>
+        <button type="button" class="os-cwa-tab" data-tab="os-cwa-withdraw-tab">
+            <span class="dashicons dashicons-cart"></span>
+            <?php esc_html_e( '2. Custom Withdrawal', 'olama-stores' ); ?>
+        </button>
+    </nav>
+
+    <div class="os-cwa-tab-content active" id="os-cwa-approval-tab">
+        <div class="os-cwa-notice">
+            <span class="dashicons dashicons-lock"></span>
+            <?php esc_html_e( 'Students are blocked from custom withdrawal by default. Confirm payment, select the permitted students, then save approval.', 'olama-stores' ); ?>
+        </div>
+
+        <div class="os-cwa-card">
+            <div class="os-cwa-card-header">
+                <span class="dashicons dashicons-search"></span>
+                <?php esc_html_e( 'Find Family for Approval', 'olama-stores' ); ?>
+            </div>
+            <div class="os-cwa-card-body">
+                <div class="os-cwa-lookup">
+                    <input type="text" id="os-cwa-family-id" placeholder="<?php esc_attr_e( 'Enter Family Number / Name...', 'olama-stores' ); ?>">
+                    <button type="button" id="os-cwa-load-family" class="button button-primary">
+                        <?php esc_html_e( 'Search Families', 'olama-stores' ); ?>
+                    </button>
+                </div>
+                <div id="os-cwa-family-matches" class="os-cwa-family-matches" hidden aria-live="polite"></div>
+            </div>
+        </div>
+
+        <div class="os-cwa-card" id="os-cwa-results" hidden>
+            <div class="os-cwa-card-header">
+                <span class="dashicons dashicons-groups"></span>
+                <span id="os-cwa-family-title"></span>
+            </div>
+            <div class="os-cwa-card-body">
+                <div class="os-cwa-table-wrap">
+                    <table class="os-cwa-table">
+                        <thead>
+                            <tr>
+                                <th class="os-cwa-check-column">
+                                    <input type="checkbox" id="os-cwa-check-all">
+                                </th>
+                                <th><?php esc_html_e( 'Student', 'olama-stores' ); ?></th>
+                                <th><?php esc_html_e( 'Grade / Section', 'olama-stores' ); ?></th>
+                                <th><?php esc_html_e( 'Approval Status', 'olama-stores' ); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody id="os-cwa-students"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="os-cwa-card-footer">
+                <span id="os-cwa-selected-count"></span>
+                <button type="button" id="os-cwa-save" class="button button-primary">
+                    <?php esc_html_e( 'Save Student Approvals', 'olama-stores' ); ?>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="os-cwa-tab-content" id="os-cwa-withdraw-tab">
+        <div class="os-cwa-notice">
+            <span class="dashicons dashicons-info"></span>
+            <?php esc_html_e( 'Enter the family ID again. Only students approved in step 1 can select and withdraw custom items.', 'olama-stores' ); ?>
+        </div>
 
     <!-- Family Lookup Section -->
     <div class="os-section-card" style="margin-bottom: 2rem;">
@@ -34,9 +108,14 @@
         <div class="os-section-card" style="margin-top: 2rem; display:none;" id="os-family-withdrawals-wrap">
             <div class="os-section-header">
                 <h2><span class="dashicons dashicons-list-view"></span> <?php esc_html_e( 'Withdrawals History', 'olama-stores' ); ?></h2>
+                <button type="button" id="os-btn-family-receipt" class="button os-cwa-family-receipt no-print" style="display:none;">
+                    <span class="dashicons dashicons-printer"></span>
+                    <?php esc_html_e( 'Family Receipt', 'olama-stores' ); ?>
+                </button>
             </div>
             <div id="os-family-withdrawals-list"></div>
         </div>
+    </div>
     </div>
 
     <!-- Batch Assignment Modal (hidden) -->
@@ -138,34 +217,46 @@
         
         $('#os-active-family-id').text(search);
         $('#os-family-results-wrap').show();
+        $('#os-btn-family-receipt').hide();
         $('#os-family-students-list').html('<p class="os-loading"><?php esc_html_e("Searching families...","olama-stores");?></p>');
 
         wp.apiFetch({ path: '/olama-stores/v1/students?search=' + encodeURIComponent(search) + '&academic_year_id=' + olamaStores.activeYearId }).then(function(students){
             if(!students.length){
                 $('#os-family-students-list').html('<p><?php esc_html_e("No students found for this family.","olama-stores");?></p>');
                 $('#os-family-withdrawals-wrap').hide();
+                $(document).trigger('os:cwa-family-history', [{ family: {}, students: [], withdrawals: [] }]);
                 return;
             }
             renderStudents(students);
-            fetchFamilyWithdrawals(students);
+            fetchFamilyWithdrawals(students, search);
         });
     });
 
-    function fetchFamilyWithdrawals(students) {
+    function fetchFamilyWithdrawals(students, familyId) {
         $('#os-family-withdrawals-wrap').show();
         $('#os-family-withdrawals-list').html('<p class="os-loading"><?php esc_html_e("Loading history...","olama-stores");?></p>');
         
         var promises = students.map(function(s) {
             return wp.apiFetch({ path: '/olama-stores/v1/assignees/student/' + s.student_uid + '?academic_year_id=' + olamaStores.activeYearId });
         });
+        var familyPromise = wp.apiFetch({
+            path: '/olama-stores/v1/custom-withdrawal/approvals?family_id='
+                + encodeURIComponent(familyId)
+                + '&academic_year_id='
+                + olamaStores.activeYearId
+        });
 
-        Promise.all(promises).then(function(results) {
+        Promise.all([Promise.all(promises), familyPromise]).then(function(response) {
+            var results = response[0];
+            var familyScope = response[1] || {};
             var allWithdrawals = [];
             results.forEach(function(withdrawals, index) {
                 var studentName = students[index].student_name;
                 withdrawals.forEach(function(w) {
-                    w.student_name = studentName; // Inject name for display
-                    allWithdrawals.push(w);
+                    if (w.warehouse_type === 'custom') {
+                        w.student_name = studentName;
+                        allWithdrawals.push(w);
+                    }
                 });
             });
 
@@ -174,7 +265,27 @@
                 return new Date(b.created_at) - new Date(a.created_at);
             });
 
+            students.forEach(function(student) {
+                student.custom_issued = allWithdrawals.some(function(withdrawal) {
+                    return withdrawal.assignee_id === student.student_uid
+                        && withdrawal.status === 'active'
+                        && (parseInt(withdrawal.quantity_assigned || 0, 10) - parseInt(withdrawal.quantity_returned || 0, 10)) > 0;
+                });
+            });
+
+            renderStudents(students);
             renderWithdrawals(allWithdrawals);
+            $(document).trigger('os:cwa-family-history', [{
+                family: familyScope.family || {},
+                students: students,
+                withdrawals: allWithdrawals
+            }]);
+        }).catch(function(error) {
+            $('#os-family-withdrawals-list').html('<p><?php esc_html_e("Unable to load family withdrawal history.","olama-stores");?></p>');
+            $(document).trigger('os:cwa-family-history', [{ family: {}, students: students, withdrawals: [] }]);
+            if (window.console && console.error) {
+                console.error(error);
+            }
         });
     }
 
@@ -268,13 +379,27 @@
         var html = '<table class="wp-list-table widefat striped"><thead><tr>'
             + '<th><?php esc_html_e("Name","olama-stores");?></th>'
             + '<th><?php esc_html_e("Grade / Section","olama-stores");?></th>'
+            + '<th><?php esc_html_e("Approval","olama-stores");?></th>'
+            + '<th><?php esc_html_e("Issue Status","olama-stores");?></th>'
             + '<th><?php esc_html_e("Actions","olama-stores");?></th>'
             + '</tr></thead><tbody>';
         students.forEach(function(s){
+            var allowed = s.custom_withdrawal_allowed === true || s.custom_withdrawal_allowed === 1;
+            var status = allowed
+                ? '<span class="os-cwa-status os-cwa-status-approved"><?php esc_html_e("Approved","olama-stores");?></span>'
+                : '<span class="os-cwa-status os-cwa-status-blocked"><?php esc_html_e("Blocked","olama-stores");?></span>';
+            var action = allowed
+                ? '<button class="button button-small os-btn-wd" data-uid="'+s.student_uid+'" data-name="'+s.student_name+'" data-grade-id="'+(s.grade_id||'')+'"><?php esc_html_e("Select Items","olama-stores");?></button>'
+                : '<button class="button button-small" disabled title="<?php esc_attr_e("Approval is required before custom withdrawal.","olama-stores");?>"><?php esc_html_e("Approval Required","olama-stores");?></button>';
+            var issueStatus = s.custom_issued
+                ? '<span class="os-cwa-status os-cwa-status-issued"><?php esc_html_e("Issued","olama-stores");?></span>'
+                : '<span class="os-cwa-status os-cwa-status-not-issued"><?php esc_html_e("Not Issued","olama-stores");?></span>';
             html += '<tr>'
                 + '<td><strong>'+s.student_name+'</strong><br><small>UID: '+s.student_uid+'</small></td>'
                 + '<td>'+(s.grade_name||'')+' — '+(s.section_name||'')+'</td>'
-                + '<td><button class="button button-small os-btn-wd" data-uid="'+s.student_uid+'" data-name="'+s.student_name+'" data-grade-id="'+(s.grade_id||'')+'"><?php esc_html_e("Select Items","olama-stores");?></button></td>'
+                + '<td>'+status+'</td>'
+                + '<td>'+issueStatus+'</td>'
+                + '<td>'+action+'</td>'
                 + '</tr>';
         });
         html += '</tbody></table>';
@@ -636,38 +761,15 @@
             };
 
             return wp.apiFetch({ path: '/olama-stores/v1/assignments', method: 'POST', data: payload }).then(function(){
-                var today = new Date().toLocaleDateString();
-                $('#os-receipt-date').text(today);
-                $('#os-receipt-student-name').text(studentName);
-                var tbl = '<table style="width:100%; border-collapse:collapse;"><thead><tr>'
-                    + '<th style="border:1px solid #333; padding:6px;"><?php esc_html_e("Item","olama-stores");?></th>'
-                    + '<th style="border:1px solid #333; padding:6px;"><?php esc_html_e("Qty","olama-stores");?></th>'
-                    + '</tr></thead><tbody>';
-                items.forEach(function(it){
-                    var itemName = $('#os-withdrawal-items-container').find('.os-wd-item-select').filter(function(){
-                        return parseInt($(this).val()) === it.item_id;
-                    }).find('option:selected').text() || 'Item #' + it.item_id;
-                    tbl += '<tr><td style="border:1px solid #333; padding:6px;">' + itemName + '</td>'
-                         + '<td style="border:1px solid #333; padding:6px; text-align:center;">' + it.quantity + '</td></tr>';
-                });
-                tbl += '</tbody></table>';
-                $('#os-receipt-items-table').html(tbl);
-
                 $('#os-withdraw-modal').hide();
-
-                if (confirm('<?php esc_html_e("Withdrawal successful! Click OK to print the receipt, or Cancel to skip.","olama-stores");?>')) {
-                    $('#os-print-receipt').show();
-                    window.print();
-                    $('#os-print-receipt').hide();
-                }
-
+                alert('<?php esc_html_e("Withdrawal successful. Use Family Receipt after the family history refreshes.","olama-stores");?>');
                 $('#os-btn-family-lookup').click();
             });
         }).catch(function(e){ 
             if (e && e.is_entitlement_error) {
                 return;
             }
-            alert(e.message || 'Error processing request'); 
+            alert(e.message || '<?php esc_html_e( 'Error processing request.', 'olama-stores' ); ?>');
         }).finally(function(){
             $btn.prop('disabled', false).text('<?php esc_html_e("Confirm Withdrawal","olama-stores");?>');
         });
@@ -798,3 +900,63 @@
     });
 })(jQuery);
 </script>
+
+<script id="os-cwa-data" type="application/json">
+<?php echo wp_json_encode( array(
+    'nonce'        => $custom_withdrawal_nonce,
+    'apiPath'      => '/olama-stores/v1/custom-withdrawal/approvals',
+    'familiesApiPath' => '/olama-stores/v1/families',
+    'activeYearId' => os_get_active_year_id(),
+    'activeYearName' => os_get_active_year_name(),
+    'i18n'         => array(
+        'loading'          => __( 'Loading…', 'olama-stores' ),
+        'saving'           => __( 'Saving…', 'olama-stores' ),
+        'errorGeneric'     => __( 'An error occurred. Please try again.', 'olama-stores' ),
+        'familyRequired'   => __( 'Enter a family ID.', 'olama-stores' ),
+        'familyMembers'    => __( 'Family Members', 'olama-stores' ),
+        'approved'         => __( 'Approved', 'olama-stores' ),
+        'blocked'          => __( 'Blocked', 'olama-stores' ),
+        'selected'         => __( '%d of %d students approved', 'olama-stores' ),
+        'saved'            => __( 'Student withdrawal approvals saved.', 'olama-stores' ),
+        'loadFamily'       => __( 'Search Families', 'olama-stores' ),
+        'saveApprovals'    => __( 'Save Student Approvals', 'olama-stores' ),
+        'studentUid'       => __( 'UID:', 'olama-stores' ),
+        'matchingFamilies' => __( 'Matching Families', 'olama-stores' ),
+        'familyNumber'     => __( 'Family Number', 'olama-stores' ),
+        'familyName'       => __( 'Family / Parent Names', 'olama-stores' ),
+        'selectFamily'     => __( 'Select Family', 'olama-stores' ),
+        'noFamilies'       => __( 'No families matched this number or name.', 'olama-stores' ),
+        'familyReceipt'    => __( 'Family Receipt', 'olama-stores' ),
+        'receiptTitle'     => __( 'Family Custom Withdrawal Receipt', 'olama-stores' ),
+        'familyId'         => __( 'Family ID', 'olama-stores' ),
+        'fatherName'       => __( 'Father Name', 'olama-stores' ),
+        'actionDates'      => __( 'Action Date(s)', 'olama-stores' ),
+        'issuedBy'         => __( 'Issued By', 'olama-stores' ),
+        'student'          => __( 'Student', 'olama-stores' ),
+        'item'             => __( 'Item', 'olama-stores' ),
+        'quantity'         => __( 'Quantity', 'olama-stores' ),
+        'actionDate'       => __( 'Action Date', 'olama-stores' ),
+        'academicYear'     => __( 'Academic Year', 'olama-stores' ),
+        'printedOn'        => __( 'Printed On', 'olama-stores' ),
+        'noReceiptItems'   => __( 'No active custom withdrawals are available for this family.', 'olama-stores' ),
+        'receiptPopupBlocked' => __( 'The receipt window was blocked. Allow pop-ups and try again.', 'olama-stores' ),
+        'unknownAdministrator' => __( 'Unknown administrator', 'olama-stores' ),
+    ),
+) ); ?>
+</script>
+
+<?php
+wp_enqueue_script(
+    'os-custom-withdrawal-approval',
+    OS_URL . 'admin/assets/js/os-custom-withdrawal-approval.js',
+    array( 'jquery', 'wp-api-fetch' ),
+    OS_Helpers::asset_version( 'admin/assets/js/os-custom-withdrawal-approval.js' ),
+    true
+);
+
+wp_enqueue_style(
+    'os-custom-withdrawal-approval',
+    OS_URL . 'admin/assets/css/os-custom-withdrawal-approval.css',
+    array( 'olama-stores-admin' ),
+    OS_Helpers::asset_version( 'admin/assets/css/os-custom-withdrawal-approval.css' )
+);

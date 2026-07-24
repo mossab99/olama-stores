@@ -292,49 +292,66 @@ class OS_API_Books_Withdrawal {
         $family_id = sanitize_text_field( $request->get_param( 'family_id' ) );
         $student_name = sanitize_text_field( $request->get_param( 'student_name' ) );
 
-        $join_enrollment = "";
-        if ( $grade_id > 0 || $section_id > 0 || ! empty( $family_id ) || ! empty( $student_name ) ) {
-            $join_enrollment = "JOIN {$wpdb->prefix}olama_student_enrollment e ON a.assignee_id = e.student_uid
-                                JOIN {$wpdb->prefix}olama_students s ON e.student_uid = s.student_uid";
-            if ( $academic_year_id > 0 ) {
-                $where[] = 'e.academic_year_id = %d';
-                $params[] = $academic_year_id;
-            }
-            if ( $grade_id > 0 ) {
-                $join_enrollment .= " JOIN {$wpdb->prefix}olama_sections sec ON e.section_id = sec.id";
-                $where[] = 'sec.grade_id = %d';
-                $params[] = $grade_id;
-            }
-            if ( $section_id > 0 ) {
-                $where[] = 'e.section_id = %d';
-                $params[] = $section_id;
-            }
-            if ( ! empty( $family_id ) ) {
-                $where[] = 's.family_id = %s';
+        $core = OS_School_Integration::is_core_available();
+        if ( $grade_id > 0 ) {
+            $where[] = $core ? 'sy.class_id = %s' : 'sec.grade_id = %d';
+            $params[] = $core ? (string) $grade_id : $grade_id;
+        }
+        if ( $section_id > 0 ) {
+            $where[] = $core ? 'sy.section_id = %s' : 'enroll.section_id = %d';
+            $params[] = $core ? (string) $section_id : $section_id;
+        }
+        if ( ! empty( $family_id ) ) {
+            $where[] = $core
+                ? '(stud.family_uid = %s OR stud.oracle_family_id = %s)'
+                : 'stud.family_id = %s';
+            $params[] = $family_id;
+            if ( $core ) {
                 $params[] = $family_id;
             }
-            if ( ! empty( $student_name ) ) {
-                $like = '%' . $wpdb->esc_like( $student_name ) . '%';
-                $where[] = '(s.student_name LIKE %s OR s.student_uid LIKE %s)';
-                $params[] = $like;
-                $params[] = $like;
-            }
+        }
+        if ( ! empty( $student_name ) ) {
+            $like = '%' . $wpdb->esc_like( $student_name ) . '%';
+            $where[] = '(stud.student_name LIKE %s OR stud.student_uid LIKE %s)';
+            $params[] = $like;
+            $params[] = $like;
         }
 
         $where_sql = implode( ' AND ', $where );
-        $sql = "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name,
-                       stud.student_name, g.grade_name, sec.section_name, stud.family_id
-                FROM {$wpdb->prefix}os_assignments a
-                LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
-                LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
-                JOIN {$wpdb->prefix}olama_students stud ON a.assignee_id = stud.student_uid
-                LEFT JOIN {$wpdb->prefix}olama_student_enrollment enroll ON stud.student_uid = enroll.student_uid " . ( $academic_year_id > 0 ? " AND enroll.academic_year_id = {$academic_year_id}" : "" ) . "
-                LEFT JOIN {$wpdb->prefix}olama_sections sec ON enroll.section_id = sec.id
-                LEFT JOIN {$wpdb->prefix}olama_grades g ON sec.grade_id = g.id
-                $join_enrollment
-                WHERE $where_sql
-                GROUP BY a.id
-                ORDER BY a.assigned_date DESC, a.created_at DESC";
+        if ( $core ) {
+            $study_year = OS_School_Integration::resolve_study_year( $academic_year_id );
+            $year_filter = $study_year
+                ? $wpdb->prepare( ' AND sy2.study_year = %s', $study_year )
+                : '';
+            $sql = "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name,
+                           stud.student_name, sy.class_name AS grade_name, sy.section_name,
+                           stud.oracle_family_id AS family_id, stud.family_uid
+                    FROM {$wpdb->prefix}os_assignments a
+                    LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
+                    LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
+                    JOIN {$wpdb->prefix}olama_core_students stud ON a.assignee_id = stud.student_uid
+                    LEFT JOIN {$wpdb->prefix}olama_core_student_years sy ON sy.id = (
+                        SELECT sy2.id FROM {$wpdb->prefix}olama_core_student_years sy2
+                        WHERE sy2.student_uid = stud.student_uid {$year_filter}
+                        ORDER BY sy2.study_year DESC, sy2.id DESC LIMIT 1
+                    )
+                    WHERE {$where_sql}
+                    GROUP BY a.id
+                    ORDER BY a.assigned_date DESC, a.created_at DESC";
+        } else {
+            $sql = "SELECT a.*, i.name AS item_name, i.sku, w.name AS warehouse_name,
+                           stud.student_name, g.grade_name, sec.section_name, stud.family_id
+                    FROM {$wpdb->prefix}os_assignments a
+                    LEFT JOIN {$wpdb->prefix}os_items i ON a.item_id = i.id
+                    LEFT JOIN {$wpdb->prefix}os_warehouses w ON a.warehouse_id = w.id
+                    JOIN {$wpdb->prefix}olama_students stud ON a.assignee_id = stud.student_uid
+                    LEFT JOIN {$wpdb->prefix}olama_student_enrollment enroll ON stud.student_uid = enroll.student_uid " . ( $academic_year_id > 0 ? " AND enroll.academic_year_id = {$academic_year_id}" : "" ) . "
+                    LEFT JOIN {$wpdb->prefix}olama_sections sec ON enroll.section_id = sec.id
+                    LEFT JOIN {$wpdb->prefix}olama_grades g ON sec.grade_id = g.id
+                    WHERE {$where_sql}
+                    GROUP BY a.id
+                    ORDER BY a.assigned_date DESC, a.created_at DESC";
+        }
 
         $results = $params
             ? $wpdb->get_results( $wpdb->prepare( $sql, $params ) )
@@ -353,37 +370,18 @@ class OS_API_Books_Withdrawal {
 
         $allocations = get_option( 'os_book_allocations', array() );
 
-        $query = "SELECT s.student_uid, s.student_name, s.family_id, sec.grade_id, sec.section_name, g.grade_name, e.section_id
-                  FROM {$wpdb->prefix}olama_students s
-                  JOIN {$wpdb->prefix}olama_student_enrollment e ON s.student_uid = e.student_uid
-                  JOIN {$wpdb->prefix}olama_sections sec ON e.section_id = sec.id
-                  JOIN {$wpdb->prefix}olama_grades g ON sec.grade_id = g.id
-                  WHERE 1=1";
-
-        $params = array();
-        if ( $academic_year_id > 0 ) {
-            $query .= " AND e.academic_year_id = %d";
-            $params[] = $academic_year_id;
-        }
-        if ( $grade_id > 0 ) {
-            $query .= " AND sec.grade_id = %d";
-            $params[] = $grade_id;
-        }
-        if ( $section_id > 0 ) {
-            $query .= " AND e.section_id = %d";
-            $params[] = $section_id;
-        }
-        if ( ! empty( $family_id ) ) {
-            $query .= " AND s.family_id = %s";
-            $params[] = $family_id;
-        }
-        if ( ! empty( $student_uid ) ) {
-            $query .= " AND s.student_uid = %s";
-            $params[] = $student_uid;
-        }
-
-        $query .= " ORDER BY g.grade_level ASC, sec.section_name ASC, s.student_name ASC";
-        $students = $params ? $wpdb->get_results( $wpdb->prepare( $query, $params ) ) : $wpdb->get_results( $query );
+        $students = OS_School_Integration::get_students( array_filter( array(
+            'academic_year_id' => $academic_year_id,
+            'grade_id'         => $grade_id,
+            'section_id'       => $section_id,
+        ) ) );
+        $students = array_values( array_filter( $students, static function ( $student ) use ( $family_id, $student_uid ) {
+            $family_matches = ! $family_id
+                || (string) ( $student->family_id ?? '' ) === (string) $family_id
+                || (string) ( $student->family_uid ?? '' ) === (string) $family_id;
+            $student_matches = ! $student_uid || (string) $student->student_uid === (string) $student_uid;
+            return $family_matches && $student_matches;
+        } ) );
 
         $report = array();
         foreach ( $students as $stud ) {
@@ -441,14 +439,13 @@ class OS_API_Books_Withdrawal {
         $report = array();
         foreach ( $sections as $sec ) {
             $section_id = (int) $sec->id;
-            $grade_id = (int) $wpdb->get_var( $wpdb->prepare( "SELECT grade_id FROM {$wpdb->prefix}olama_sections WHERE id = %d", $section_id ) );
+            $grade_id = (int) ( $sec->grade_id ?? 0 );
             $allocated_items = $allocations[$grade_id] ?? array();
             $allocated_count = count( $allocated_items );
 
-            $students = $wpdb->get_results( $wpdb->prepare(
-                "SELECT student_uid FROM {$wpdb->prefix}olama_student_enrollment
-                 WHERE section_id = %d" . ( $academic_year_id > 0 ? " AND academic_year_id = %d" : "" ),
-                $section_id, $academic_year_id
+            $students = OS_School_Integration::get_students( array(
+                'academic_year_id' => $academic_year_id,
+                'section_id'       => $section_id,
             ) );
             $student_count = count( $students );
 
